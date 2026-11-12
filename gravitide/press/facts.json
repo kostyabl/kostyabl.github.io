@@ -1,0 +1,31 @@
+{
+  "title": "Gravitide: Gravity Throw",
+  "developer": "Kostya Blokhin",
+  "platform": "iPhone",
+  "minimum_os": "iOS 18.6",
+  "genre": "Physics action arcade",
+  "orientation": "Portrait",
+  "controls": "One finger",
+  "languages": [
+    "English",
+    "Russian",
+    "Spanish",
+    "German"
+  ],
+  "campaign": {
+    "expeditions": 15,
+    "sectors": 5,
+    "waves": 55
+  },
+  "pricing_model": "First 3 expeditions free; one non-consumable in-app purchase unlocks the other 12.",
+  "ads": false,
+  "subscriptions": false,
+  "offline": "Gameplay works offline. Downloading the app and acquiring or restoring a purchase require a connection.",
+  "update": "1.2",
+  "app_store": "https://apps.apple.com/us/app/gravitide-gravity-throw/id6809525146",
+  "developer_x": "https://x.com/kostyabl",
+  "asset_credit": "Kostya Blokhin / Gravitide",
+  "update_status_as_of_2026_11_12": "Version 1.2 available on the App Store; released 12 November 2026.",
+  "press_page": "https://kostyabl.github.io/gravitide/press/",
+  "press_contact": "kostyabl@gmail.com"
+}

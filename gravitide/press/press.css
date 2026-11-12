@@ -1,0 +1,96 @@
+/* Пресс-страница использует палитру и общие компоненты личного сайта. */
+.press-page { --max: 1160px; }
+.skip-link { position: absolute; top: -80px; left: 24px; padding: 12px; z-index: 100; background: var(--bg); }
+.skip-link:focus { top: 8px; }
+.press-page .wrap { padding-inline: 32px; }
+.press-page section { padding: 72px 0; }
+.press-page h2 { font-family: var(--font-display); font-size: clamp(1.8rem, 3.5vw, 2.7rem); line-height: 1.15; letter-spacing: -.035em; margin: 12px 0 24px; }
+.eyebrow { color: var(--accent); font-size: .7rem; font-weight: 700; letter-spacing: .18em; }
+.press-page .press-hero { padding: 52px 0 66px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) 306px; align-items: center; gap: 76px; }
+.identity { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.identity img { border-radius: 19px; }
+.identity p { color: var(--text-soft); font-size: .88rem; margin-top: 4px; }
+.press-intro h1 { font-family: var(--font-display); font-size: clamp(2.8rem, 6.5vw, 5rem); line-height: 1.03; letter-spacing: -.055em; font-weight: 700; }
+.press-intro h1 span { display: block; color: var(--accent); font-size: .64em; line-height: 1.12; letter-spacing: -.035em; margin-top: 14px; }
+.hero-summary { font-size: 1.12rem; color: var(--text-soft); max-width: 505px; margin-top: 24px; line-height: 1.65; }
+.gesture { font-weight: 600; font-size: .9rem; margin: 20px 0 24px; letter-spacing: .06em; }
+.press-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.press-actions .btn { padding: 12px 18px; font-size: .88rem; }
+.price-note { color: var(--text-soft); font-size: .79rem; margin-top: 18px; }
+.gameplay { width: 100%; max-width: 306px; justify-self: center; }
+.gameplay video { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: 18px; background: #03090e; border: 1px solid var(--border-hi); box-shadow: var(--shadow); }
+.gameplay figcaption { font-size: .72rem; color: var(--text-soft); margin-top: 14px; text-align: center; }
+.gameplay figcaption span { display: block; color: var(--text); font-size: .83rem; font-weight: 600; }
+.overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); gap: 72px; border-top: 1px solid var(--border); }
+.story > p { color: var(--text-soft); margin-bottom: 16px; }
+.text-link { display: inline-block; font-size: .85rem; margin-top: 6px; text-decoration: underline; text-underline-offset: 4px; }
+.update-note { border-left: 2px solid var(--accent-line); padding-left: 20px; margin-top: 34px; }
+.update-note h3 { font-size: 1rem; margin-bottom: 8px; }
+.update-note p { font-size: .9rem; color: var(--text-soft); }
+.update-note .release-date { font-size: .8rem; margin-top: 10px; color: var(--accent); }
+.facts dl > div { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--border); font-size: .85rem; }
+.facts dt { color: var(--text-soft); }
+.facts dd { margin: 0; }
+.screenshots-section, .contact-section { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
+.section-description { color: var(--text-soft); max-width: 670px; }
+.asset-note { color: var(--text-soft); font-size: .8rem; margin-top: 12px; max-width: 760px; }
+.gallery-group { margin-top: 20px; border-top: 1px solid var(--border-hi); }
+.gallery-group:first-of-type { margin-top: 32px; }
+.gallery-group summary { display: list-item; padding: 20px 0; cursor: pointer; font-weight: 600; }
+.gallery-group summary small { color: var(--text-soft); font-weight: 400; margin-left: 10px; }
+.screenshot-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; padding: 0 0 32px; }
+.screenshot-grid figure { min-width: 0; }
+.screenshot-grid a { display: block; border-radius: 16px; overflow: hidden; background: #03090e; border: 1px solid var(--border); }
+.screenshot-grid img { width: 100%; height: auto; aspect-ratio: 1320 / 2868; }
+.screenshot-grid figcaption { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; color: var(--text-soft); font-size: .75rem; }
+.screenshot-grid figcaption span:last-child { font-size: .67rem; white-space: nowrap; }
+.download-list { margin: 32px 0 20px; border-top: 1px solid var(--border-hi); }
+.download-list > a { padding: 21px 0; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--border); }
+.download-list strong { display: block; color: var(--text); font-size: 1rem; font-weight: 600; }
+.download-list a > span > span { display: block; color: var(--text-soft); font-size: .83rem; margin-top: 3px; }
+.download-list > a:hover strong { color: var(--accent); }
+.file-kind { flex-shrink: 0; font-size: .75rem; font-weight: 600; }
+.press-page .contact-section { padding: 48px 0; }
+.contact-row { display: flex; justify-content: space-between; align-items: center; gap: 32px; }
+.contact-row h2 { font-size: 1.8rem; margin: 10px 0 14px; }
+.contact-row p { color: var(--text-soft); font-size: .9rem; }
+.contact-row .btn { white-space: nowrap; }
+@media (max-width: 950px) {
+    .hero-grid { gap: 34px; grid-template-columns: minmax(0, 1fr) 260px; }
+    .overview { gap: 34px; grid-template-columns: 1fr 1fr; }
+    .facts dl > div { grid-template-columns: 100px minmax(0, 1fr); gap: 10px; }
+    .contact-row { flex-wrap: wrap; }
+}
+@media (max-width: 700px) {
+    html { scroll-padding-top: 122px; }
+    .press-page .wrap { padding-inline: 22px; }
+    .press-page .site-header .wrap { flex-wrap: wrap; height: auto; padding-block: 12px; gap: 8px; }
+    .press-page .brand { font-size: .86rem; }
+    .press-page .brand span { display: inline; }
+    .press-page .brand .brand-mark { display: grid; }
+    .press-page .nav { width: 100%; justify-content: space-between; }
+    .press-page .nav a { font-size: .78rem; padding: 8px 0; }
+    .press-page .press-hero { padding-block: 32px 42px; }
+    .hero-grid, .overview { grid-template-columns: 1fr; gap: 34px; }
+    .press-intro h1 { font-size: 3.35rem; }
+    .hero-summary { font-size: 1rem; }
+    .identity { margin-bottom: 24px; }
+    .identity img { width: 58px; height: 58px; border-radius: 16px; }
+    .press-actions { flex-direction: column; }
+    .press-actions .btn { width: 100%; }
+    .gameplay { max-width: 300px; }
+    .press-page section { padding-block: 42px; }
+    .overview { gap: 0; }
+    .overview .facts { padding-top: 0; }
+    .facts dl > div { grid-template-columns: 120px minmax(0, 1fr); }
+    .screenshot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+    .screenshot-grid a { border-radius: 10px; }
+    .screenshot-grid figcaption { font-size: .7rem; flex-wrap: wrap; gap: 1px; }
+    .screenshot-grid figcaption span:last-child { font-size: .6rem; }
+    .download-list > a { gap: 16px; }
+    .download-list a > span > span { font-size: .77rem; }
+    .file-kind { font-size: .66rem; }
+    .gallery-group summary small { display: inline-block; font-size: .72rem; }
+    .press-page .site-footer .wrap { align-items: flex-start; gap: 12px; }
+}

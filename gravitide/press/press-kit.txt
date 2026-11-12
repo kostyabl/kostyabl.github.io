@@ -1,0 +1,42 @@
+GRAVITIDE — PRESS KIT
+Updated 12 November 2026 for version 1.2.
+Version 1.2 available on the App Store. Released 12 November 2026.
+
+Turn space debris into a weapon in a one-finger physics arcade game for iPhone.
+
+Gravitide is a one-finger physics arcade game for iPhone. Hold the screen to draw your ship and nearby debris into orbit, charge a fragment, then release it as a projectile. The same gravity that helps you attack also moves your ship, so every throw is a balance of aim, timing and survival. The campaign spans 15 expeditions, five sectors and 55 waves, with upgrades, unlockable modules and boss encounters. Version 1.2 adds a hands-on flight lesson, clearer aiming feedback, slower action when a throw is ready, and Spanish and German alongside English and Russian. The first three expeditions are free; one purchase unlocks the remaining twelve.
+
+FACTS
+Developer: Kostya Blokhin
+Platform: iPhone, iOS 18.6 or later
+Genre: physics action arcade
+Controls: one finger, portrait orientation
+Languages: English, Russian, Spanish, German
+Campaign: 15 expeditions, 5 sectors, 55 waves
+Price model: first 3 expeditions free; one purchase unlocks the other 12
+No ads or subscriptions
+Offline gameplay; downloading and acquiring/restoring purchases need a connection
+
+WHAT CHANGED IN 1.2
+Hands-on lessons for moving the ship, throwing debris and avoiding damage.
+Clearer aiming feedback and slower action when a throw is ready.
+A calmer opening to the first expedition.
+Spanish and German localization alongside English and Russian.
+
+LINKS
+App Store: https://apps.apple.com/us/app/gravitide-gravity-throw/id6809525146
+Developer: https://x.com/kostyabl
+Press page: https://kostyabl.github.io/gravitide/press/
+Contact: kostyabl@gmail.com
+
+ASSETS
+assets/brand/: original 1024 px app icon
+assets/en-US/, ru/, es-ES/, de-DE/: 6 screenshots, a 26.5 s App Preview,
+a poster and public store copy per language
+assets/social/: 10.5 s English throw clip, poster, title and caption
+All footage is from version 1.2. Videos are silent; no music has been added.
+The social clip shows two tutorial throws at their original speed.
+
+CREDIT
+Kostya Blokhin / Gravitide
+Assets supplied for editorial coverage and reviews of Gravitide.
