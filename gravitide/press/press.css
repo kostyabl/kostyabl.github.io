@@ -1,8 +1,6 @@
 /* Пресс-страница использует палитру и общие компоненты личного сайта. */
-.press-page { --max: 1160px; }
 .skip-link { position: absolute; top: -80px; left: 24px; padding: 12px; z-index: 100; background: var(--bg); }
 .skip-link:focus { top: 8px; }
-.press-page .wrap { padding-inline: 32px; }
 .press-page section { padding: 72px 0; }
 .press-page h2 { font-family: var(--font-display); font-size: clamp(1.8rem, 3.5vw, 2.7rem); line-height: 1.15; letter-spacing: -.035em; margin: 12px 0 24px; }
 .eyebrow { color: var(--accent); font-size: .7rem; font-weight: 700; letter-spacing: .18em; }
@@ -63,14 +61,6 @@
     .contact-row { flex-wrap: wrap; }
 }
 @media (max-width: 700px) {
-    html { scroll-padding-top: 122px; }
-    .press-page .wrap { padding-inline: 22px; }
-    .press-page .site-header .wrap { flex-wrap: wrap; height: auto; padding-block: 12px; gap: 8px; }
-    .press-page .brand { font-size: .86rem; }
-    .press-page .brand span { display: inline; }
-    .press-page .brand .brand-mark { display: grid; }
-    .press-page .nav { width: 100%; justify-content: space-between; }
-    .press-page .nav a { font-size: .78rem; padding: 8px 0; }
     .press-page .press-hero { padding-block: 32px 42px; }
     .hero-grid, .overview { grid-template-columns: 1fr; gap: 34px; }
     .press-intro h1 { font-size: 3.35rem; }
