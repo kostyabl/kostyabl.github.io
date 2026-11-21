@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SSHTunnel для Mac — скачать и настроить</title>
+    <meta name="description" content="Подключайте приложения Mac с поддержкой HTTP-прокси через свой SSH-сервер. Один из примеров — браузер Firefox.">
+    <link rel="icon" href="icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+            } catch (e) {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="site-header" id="siteHeader">
+    <div class="wrap page-narrow">
+        <a class="brand" href="../">
+            <span class="brand-mark">KB</span>
+            <span>Konstantin Blokhin</span>
+        </a>
+
+        <nav class="nav">
+            <a lang="en" hreflang="en" href="index.html">English</a>
+            <a lang="ru" hreflang="ru" href="ru.html" aria-current="page">Русский</a>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Переключить тему">
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+                </svg>
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+                </svg>
+            </button>
+        </nav>
+    </div>
+</header>
+<main class="wrap page-narrow">
+    <div class="doc-header">
+        <div class="game-head">
+            <img class="game-icon" src="icon.png" width="76" height="76" alt="">
+            <div><h1>SSHTunnel</h1><span class="tag is-accent">macOS 15+</span></div>
+        </div>
+        <p>SSHTunnel создаёт на Mac локальный HTTP-прокси. Вы можете указать его в любом приложении с настройкой HTTP-прокси. Например, Firefox поддерживает такой прокси и может открывать через него сайты. Сайты увидят внешний IP-адрес сервера.</p>
+        <div class="hero-actions"><a class="btn btn-primary" href="SSHTunnel-arm64.zip" download>Скачать SSHTunnel для Mac</a></div>
+        <small>Apple Silicon · arm64 · ZIP</small>
+    </div>
+    <div class="doc-block is-highlight">
+      <h2>Перед началом</h2>
+  <p>Для готовой сборки нужен Mac с чипом Apple Silicon (M1 или новее) и macOS 15 или новее. Подготовьте адрес SSH-сервера, порт, логин и пароль или закрытый SSH-ключ. На сервере должна быть разрешена переадресация TCP. Для проверки подлинности сервера подойдёт его доверенный ключ или отпечаток. Можно подключиться и без проверки.</p>
+    </div>
+    <div class="doc-block">
+      <h2>Первое подключение</h2>
+  <ol>
+    <li><h3>Установите SSHTunnel</h3>
+      <p>Скачайте и распакуйте ZIP. Перетащите SSHTunnel в папку «Программы» и откройте его. У сборки локальная подпись. Если macOS запросит подтверждение, откройте «Системные настройки» → «Конфиденциальность и безопасность» и подтвердите запуск скачанного приложения.</p></li>
+    <li><h3>Укажите сервер и способ входа</h3>
+      <p>На экране «Подключение» введите логин. Перейдите в «Настройки» и заполните поля «SSH-сервер» и «Порт SSH». Обычно используется порт <code>22</code>.</p>
+      <p>Для входа по паролю оставьте «Логин и пароль». Для входа по ключу выберите «SSH-ключ» и укажите файл закрытого ключа. Если вы используете ключ по умолчанию или ssh-agent, оставьте поле файла пустым.</p></li>
+    <li><h3>Выберите, проверять ли ключ сервера</h3>
+      <p>Проверка включена по умолчанию. Для нового сервера получите у администратора отпечаток SHA256 по доверенному каналу и вставьте его в поле «Отпечаток сервера». Если ваш Mac уже хранит проверенный ключ в <code>~/.ssh/known_hosts</code>, оставьте поля отпечатка и файла доверенных ключей пустыми. Нажмите «Проверить ключ сервера». Если отпечаток не совпал, уточните у администратора, менялся ли ключ.</p>
+      <p>Чтобы подключиться без проверки, в «Настройках» снимите флажок «Проверять ключ SSH-сервера». В этом режиме отпечаток и файл доверенных ключей не требуются. Если кто-то подменит сервер, приложение не обнаружит подмену, и при входе по паролю этот сервер сможет получить ваш пароль.</p></li>
+    <li><h3>Подключитесь</h3>
+      <p>Вернитесь на экран «Подключение». При входе по паролю введите пароль SSH. Чтобы использовать его при следующих подключениях, включите «Запомнить пароль в Связке ключей». Нажмите «Подключить» и дождитесь надписи «Туннель подключён».</p></li>
+    <li><h3>Настройте приложение с поддержкой HTTP-прокси</h3>
+      <p>В сетевых настройках приложения выберите HTTP-прокси. Укажите адрес <code>127.0.0.1</code> и порт <code>18080</code>. Если вы меняли порт, возьмите его из строки «Локальный прокси» в SSHTunnel. Если нужен адрес одной строкой, скопируйте его кнопкой рядом с этой строкой.</p>
+      <p><strong>Пример для Firefox.</strong> В настройках браузера найдите слово «прокси» и откройте параметры соединения. Выберите ручную настройку, заполните поля HTTP-прокси и порта, включите использование этого же прокси для HTTPS и сохраните настройки.</p></li>
+    <li><h3>Проверьте подключение</h3>
+      <p>Если вы настроили прокси в браузере, откройте в нём страницу проверки IP. Сравните показанный адрес с внешним IP-адресом вашего SSH-сервера. Если адреса совпадают, запрос прошёл через туннель.</p></li>
+  </ol>
+    </div>
+    <div class="doc-block">
+      <h2>Как отключиться</h2>
+  <p>Нажмите «Отключить» в SSHTunnel. Приложения с настроенным прокси продолжат обращаться к нему после отключения туннеля. Чтобы снова подключаться напрямую, верните прежние сетевые настройки в каждом таком приложении.</p>
+    </div>
+    <div class="doc-block">
+      <h2>Если что-то не работает</h2>
+  <p><strong>Сервер отклонил вход.</strong> Проверьте логин и выбранный способ входа. При входе по ключу убедитесь, что на сервере разрешён соответствующий открытый ключ.</p>
+  <p><strong>Туннель подключён, но сайты не открываются.</strong> Сверьте адрес и порт в браузере с данными в строке «Локальный прокси». Если они совпадают, уточните у администратора, разрешена ли переадресация TCP на сервере.</p>
+  <p><strong>UDP показывает «шлюз недоступен».</strong> Для передачи UDP нужен клиент с поддержкой CONNECT-UDP через HTTP/1.1 и совместимый с BadVPN шлюз udpgw. Отключите туннель, проверьте в «Настройках» адрес шлюза со стороны SSH-сервера (по умолчанию <code>127.0.0.1:7300</code>) и подключитесь снова. Обычные HTTP- и HTTPS-запросы работают независимо от этого шлюза.</p>
+    </div>
+</main>
+<footer class="site-footer">
+    <div class="wrap">
+        <span>© Konstantin Blokhin, 2025–2026</span>
+        <div class="footer-links">
+            <a href="../privacy.html">Конфиденциальность</a>
+            <a href="mailto:kostyabl@gmail.com">Почта</a>
+        </div>
+    </div>
+</footer>
+
+<script src="../app.js"></script>
+</body>
+</html>

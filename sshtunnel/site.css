@@ -1,0 +1,13 @@
+.nav a[aria-current="page"] {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.doc-header .game-head { margin-bottom: 1.25rem; }
+.doc-header .hero-actions { margin: 1.25rem 0 0.5rem; }
+.doc-header small { color: var(--text-soft); }
+.doc-block ol { padding-inline-start: 1.5rem; }
+.doc-block li + li { margin-top: 1.25rem; }
+.doc-block li::marker { color: var(--accent); font-weight: 600; }
+.doc-block h3 { font-size: 1rem; margin-bottom: 0.35rem; }
+.doc-block code { overflow-wrap: anywhere; }
