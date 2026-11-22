@@ -24,7 +24,7 @@ function finishShot(scene, fps) {
   }
 }
 
-test('короткое отпускание запускает обломок, а тап для переноса кольца сохраняет бросок', () => {
+test('короткое отпускание запускает обломок на всех уровнях, включая тап для переноса кольца', () => {
   for (const stage of [0,1,2,3,4]) {
     const scene = new ThrowScene();
     scene.stage = stage;
@@ -32,10 +32,7 @@ test('короткое отпускание запускает обломок, �
     scene.step(.08);
     if (scene.freeFlight) {
       scene.placeRing(35,25);
-      assert.equal(scene.release(true),false);
-      assert.equal(scene.throws,0);
       assert.equal(scene.center.x,35);
-      scene.hold();
     }
     finishShot(scene,60);
     assert.equal(scene.throws,1);

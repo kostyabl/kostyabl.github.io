@@ -155,14 +155,8 @@ class ThrowScene {
     this.held = 0;
     this.updateAim(0);
   }
-  release(placementTap = false) {
+  release() {
     if (this.phase !== 'hold') return false;
-    if (placementTap && this.freeFlight && !this.ready) {
-      this.phase = 'idle';
-      this.preview = null;
-      this.grace = 0;
-      return false;
-    }
     // Запускаем именно показанный бросок, включая рассчитанное время встречи.
     this.shot = {...this.preview};
     this.throws++;
