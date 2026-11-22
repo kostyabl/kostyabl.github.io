@@ -18,6 +18,7 @@
   try { state = JSON.parse(sessionStorage.getItem(key) || '{}') || {}; } catch {}
   function save() { try { sessionStorage.setItem(key, JSON.stringify(state)); } catch {} }
   function send(events) {
+    window.dispatchEvent(new CustomEvent('site:milestones', {detail:events}));
     const body = new URLSearchParams({mode, events:events.join(',')});
     fetch(endpoint, {method:'POST', body, mode:'no-cors', credentials:'omit',
       referrerPolicy:'no-referrer', keepalive:true}).catch(() => {});

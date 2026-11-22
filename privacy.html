@@ -36,6 +36,7 @@
             }
         })();
     </script>
+  <script defer src="/google-analytics.js"></script>
   <script defer src="/site-metrics.js"></script>
 </head>
 <body>
@@ -162,7 +163,12 @@
                 to avoid counting the same milestone twice in a tab.</p>
             <p>The counter sends event names to Google Apps Script. The report stores totals for
                 up to 90 days. The site does not assign visitor IDs or send URL parameters or
-                referrers to the counter. Global Privacy Control and Do Not Track disable it.</p>
+                referrers to this counter. Global Privacy Control and Do Not Track disable both counters.</p>
+            <p>If you allow analytics cookies, Google Analytics 4 also measures website traffic,
+                gameplay milestones, iPhone App Store clicks from the demo, and SSHTunnel download clicks.
+                Google uses first-party cookies to distinguish browsers. Advertising features are disabled.
+                You can change your choice here.</p>
+            <button type="button" id="ga-settings" hidden>Google Analytics cookie settings</button>
         </div>
 
         <div class="doc-block">
