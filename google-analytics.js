@@ -1,7 +1,7 @@
 // Google Analytics 4 работает параллельно с агрегатами Apps Script.
 (() => {
   'use strict';
-  const measurementId = '';
+  const measurementId = 'G-RMT091NLH8';
   if (!/^G-[A-Z0-9]+$/.test(measurementId)) return;
   if (navigator.globalPrivacyControl || navigator.doNotTrack === '1') return;
 
