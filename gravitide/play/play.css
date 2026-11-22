@@ -28,3 +28,5 @@ button:active,button[data-held="true"]{background:#cafaf5}
 #progress{color:#9ef3ec}
 #best{color:#ffe6a2}
 @media(max-height:525px) and (min-width:600px){.run-hud{font-size:.8rem;gap:8px;margin-top:3px}}
+
+#field,#status,#control{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}

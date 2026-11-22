@@ -199,7 +199,7 @@
     updatePanel();startFrame();
   }
   function cancel() {if(input!==null){input=null;continueRun();}}
-  for (const surface of [field,control]) {
+  for (const surface of [field,control,el('status')]) {
     surface.addEventListener('pointerdown',e=>{
       if (!e.isPrimary || e.button!==0) return;
       if (surface===control && endStates.includes(scene.phase)) return;
