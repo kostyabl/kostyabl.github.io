@@ -25,7 +25,6 @@
   store.textContent = t('Play on iPhone','Играть на iPhone');
   const sprites = ['anchor','drifter','guardian','drifter','guardian'];
   const labels = [t('ANCHOR','ЯКОРЬ'), t('DRIFTER','ДРОН'), null, t('SCOUT','РАЗВЕДЧИК'), t('INTERCEPTOR','ПЕРЕХВАТЧИК')];
-  const endStates = ['miss','blocked','hit'];
   const recordKey = 'gravitide-demo-five-targets-best';
   let best = 0;
   function readBest() {
@@ -35,9 +34,10 @@
     } catch {}
   }
   readBest();
-  const idleTip = t('Hold to capture the fragment. Release when the dotted line turns gold.','Зажми, чтобы поймать обломок. Отпусти, когда пунктир станет золотым.');
+  const idleTip = t('Tap to throw. Hold to aim, then release at any time.','Нажми и отпусти, чтобы бросить. Хочешь прицелиться — подержи дольше.');
   const controls = t('Touch, mouse or Space','Касание, мышь или пробел');
-  let placing = false, pressedAt = 0;
+  const requests = [];
+  let pendingControlClick = null;
   let rippleTime = -1;
   let input = null, lastState = '', previousTime = 0, impactAge = 0;
   let width = 0, height = 0, ratio = 1, scale = 1, pending = 0;
@@ -73,8 +73,8 @@
     ctx.translate(width/2,height/2); ctx.scale(scale,scale);
     const c = scene.center, dest = scene.target, p = scene.fragment;
     const held = scene.phase === 'hold', hit = scene.phase === 'hit';
-    const aim = held && scene.ready && scene.aligned;
-    const blocked = held && scene.ready && scene.aimOutcome === 'blocked';
+    const aim = held && scene.aligned;
+    const blocked = held && scene.aimOutcome === 'blocked';
     const accent = aim ? '#ffe6a2' : blocked ? '#c7adff' : '#92eee4';
     // Орбитальные отметки и короткий хвост подсказывают направление движения.
     for (const radius of [86,104]) ring(c.x,c.y,radius,'#294351',.55,-2.96,-.46);
@@ -134,7 +134,7 @@
         line([[dest.x+Math.cos(a)*r,dest.y+Math.sin(a)*r],[dest.x+Math.cos(a)*(r+4),dest.y+Math.sin(a)*(r+4)]],'#a9e2d1',1.6);
       }
     }
-    if ((held && scene.ready) || scene.phase === 'flight') {
+    if (held || scene.phase === 'flight') {
       const shot = held ? scene.preview : scene.shot;
       const remaining = shot.duration - scene.flight;
       const x = shot.x + shot.vx*remaining, y = shot.y + shot.vy*remaining;
@@ -160,8 +160,9 @@
   }
   function updatePanel() {
     const aiming = {hit:'aim', blocked:'shield', miss:'ready'};
-    const state = scene.ready ? aiming[scene.aimOutcome] : scene.phase;
-    const panelKey = [scene.stage, scene.throws, state].join('/');
+    const state = scene.phase === 'hold' ? aiming[scene.aimOutcome] : scene.phase;
+    const waiting = scene.phase === 'flight' ? requests.length : 0;
+    const panelKey = [scene.stage, scene.throws, state, waiting].join('/');
     if (panelKey === lastState) return;
     lastState = panelKey;
     const finished = state === 'hit' && scene.finalStage;
@@ -177,20 +178,21 @@
     el('shots').textContent = t('Throws · ','Броски · ') + scene.throws;
     el('best').hidden = !best;
     if (best) el('best').textContent = t('Best · ','Рекорд · ') + best;
-    let tip = idleTip, label = t('Hold to charge','Зажми для заряда'), hint = controls;
-    if (state === 'idle' && scene.stage > 0) tip=t('Hold to aim. Release when the dotted line turns gold.','Зажми для прицеливания и отпусти, когда пунктир станет золотым.');
+    let tip = idleTip, label = t('Throw','Бросить'), hint = controls;
     if (scene.freeFlight) {
-      hint=t('Tap or drag to move · Arrow keys + Space','Касание или перетаскивание · Стрелки и пробел');
-      if (state === 'idle') tip=t('Tap to move the ring. Hold to charge, then release on gold.','Кликни, чтобы переместить кольцо. Удерживай для заряда и отпусти на золотой линии.');
+      hint=t('Drag to move · Arrows and Space','Перетаскивай кольцо · Стрелки и пробел');
+      if (state === 'idle') tip=t('Touch the arena to place the ring. Lift to throw, even on a quick tap.','Коснись поля, чтобы поставить кольцо. Отпусти — даже короткое касание даст бросок.');
     }
-    if (state === 'hold') {tip=t('Charging the fragment…','Обломок заряжается…');label=t('Charging…','Заряжается…');}
-    if (state === 'ready') {tip=t('Wait for the gold trajectory.','Дождись золотой траектории.');label=t('Aiming…','Прицеливание…');}
-    if (state === 'shield') {tip=t('The shield will stop this throw. Hold for an opening.','На пути щит. Подержи ещё немного.');label=t('Shield ahead','На пути щит');}
+    if (state === 'ready') {tip=t('Release to throw along the dotted line.','Отпусти, и обломок полетит по пунктиру.');label=t('Release to throw','Отпусти для броска');}
+    if (state === 'shield') {tip=t('Release to throw. The shield is in the way.','Можешь бросать. Сейчас на пути щит.');label=t('Shield ahead','На пути щит');}
     if (state === 'aim') {tip=t('On target. Release now!','Цель на линии. Отпускай!');label=t('Release!','Отпускай!');}
-    if (state === 'flight') {tip=t('Fragment in flight.','Обломок летит.');label=t('Throw in flight','Бросок');}
+    if (state === 'flight') {
+      tip = waiting ? t('Throws waiting: ','Бросков в очереди: ') + waiting : t('Fragment in flight.','Обломок летит.');
+      label = t('Queue next throw','Бросить следом');
+    }
     if (state === 'miss') {tip=t('Missed. Release when the aim line turns gold.','Мимо. Отпусти, когда пунктир станет золотым.');}
     if (state === 'blocked') tip=t('The shield stopped your shot. Wait for a gold trajectory before release.','Обломок попал в щит. Дождись золотой траектории перед броском.');
-    if (endStates.includes(state)) label=t('Try again','Ещё раз');
+    if (state === 'miss' || state === 'blocked') label=t('Throw again','Бросить ещё раз');
     if (state === 'hit') {
       const results = [
         t('Anchor down. Next up: a moving target.','Якорь сбит. Следующая цель движется.'),
@@ -199,13 +201,13 @@
         t('Scout down. Intercept the last flyer.','Разведчик сбит. Остался перехватчик.')
       ];
       tip = results[scene.stage];
-      label = t('Next target','Следующая цель');
+      label = t('Throw at next target','Бросить по следующей цели');
       hint = t('First three expeditions free on iPhone','Первые три экспедиции на iPhone бесплатны');
     }
     if (finished) {
       tip = scene.throws === scene.levelCount ? t('Perfect run! Five targets in five throws.','Чистая серия! Пять целей за пять бросков.') :
         t('All targets cleared. Throws: ','Все пять целей сбиты. Бросков: ') + scene.throws + '.';
-      label = t('Play again','Новая серия');
+      label = t('Throw in a new run','Бросить в новой серии');
     }
     el('status').textContent=tip; control.textContent=label; el('hint').textContent=hint;
     el('panel').classList.toggle('complete', finished);
@@ -219,65 +221,96 @@
     const idleMotion = scene.freeFlight || !reduce;
     if (idleMotion || scene.phase !== 'idle') scene.step(dt);
     if (scene.phase==='hit') impactAge+=dt;
-    draw();updatePanel();
+    updatePanel(); // Сохраняем результат серии до перехода к уже заказанному броску.
+    if (scene.phase !== 'hold' && scene.phase !== 'flight') processThrows();
+    draw();
     const flyingTarget = scene.freeFlight && scene.phase !== 'hit';
     const ambient = !reduce && (scene.phase === 'idle' || (scene.phase === 'hit' && impactAge < .6));
     if (!document.hidden && (flyingTarget || ambient || scene.phase === 'hold' || scene.phase === 'flight')) startFrame();
     else previousTime=0;
   }
   function startFrame() {if (!pending && !document.hidden) pending=requestAnimationFrame(frame);}
-  function continueRun() {
-    scene.continueRun(); impactAge=0; rippleTime=-1; updatePanel(); draw(); startFrame();
+  function fieldPoint(e) {
+    const rect = field.getBoundingClientRect();
+    return {x:(e.clientX-rect.left-rect.width/2)/scale, y:(e.clientY-rect.top-rect.height/2)/scale};
   }
-  function begin(key) {
-    if (input!==null || scene.phase==='flight') return false;
-    if (scene.phase!=='idle') continueRun();
-    scene.hold();input=key;updatePanel();startFrame();return true;
+  function moveRing(point) {
+    if (point && scene.freeFlight) {
+      scene.placeRing(point.x,point.y);
+      rippleTime = scene.age;
+    }
+  }
+  // Одно нажатие создаёт одну попытку, даже если предыдущий обломок ещё в воздухе.
+  function processThrows() {
+    const request = requests[0];
+    if (!request || scene.phase === 'flight') return;
+    if (scene.phase !== 'hold') {
+      if (scene.phase !== 'idle') {
+        scene.continueRun();
+        impactAge = 0;
+        rippleTime = -1;
+      }
+      scene.hold();
+      moveRing(request.point);
+    }
+    if (request.released) {
+      scene.release();
+      requests.shift();
+      document.dispatchEvent(new Event('gravitide:throw'));
+    }
+  }
+  function refreshInput() {
+    processThrows();
+    updatePanel();
+    draw();
+    startFrame();
+  }
+  function begin(key, point = null, surface = null) {
+    if (input) return false;
+    input = {key,point,surface,released:false};
+    requests.push(input);
+    refreshInput();
+    return true;
   }
   function end(key) {
-    if (input!==key) return;
-    input=null;
-    if (scene.release(placing && performance.now()-pressedAt < scene.chargeTime*1000)) document.dispatchEvent(new Event('gravitide:throw'));
-    placing=false;
-    updatePanel();startFrame();
-  }
-  function cancel() {if(input!==null){input=null;placing=false;continueRun();}}
-  function placeAtPointer(e) {
-    const rect = field.getBoundingClientRect();
-    if (scale <= 0) return;
-    scene.placeRing((e.clientX-rect.left-rect.width/2)/scale, (e.clientY-rect.top-rect.height/2)/scale);
-    rippleTime = scene.age;
-    draw();
+    if (!input || input.key !== key) return;
+    if (input.surface === control) pendingControlClick = {id:key, time:performance.now()};
+    input.released = true;
+    input = null;
+    refreshInput();
   }
   field.addEventListener('pointermove',e=>{
-    if (placing && input===e.pointerId) placeAtPointer(e);
+    if (!input?.point || input.key !== e.pointerId) return;
+    input.point = fieldPoint(e);
+    if (input === requests[0] && scene.phase === 'hold') {
+      moveRing(input.point);
+      updatePanel();
+      draw();
+    }
   });
   for (const surface of [field,control,el('status')]) {
     surface.addEventListener('pointerdown',e=>{
-      if (!e.isPrimary || e.button!==0) return;
-      if (surface===control && endStates.includes(scene.phase)) return;
-      if (begin(e.pointerId)) {
-        pressedAt = performance.now();
-        placing = surface === field && scene.freeFlight;
-        if (placing) placeAtPointer(e);
-        surface.setPointerCapture(e.pointerId);
+      if (!e.isPrimary || e.button !== 0) return;
+      pendingControlClick = null;
+      if (begin(e.pointerId,surface === field ? fieldPoint(e) : null,surface)) {
         e.preventDefault();
+        if (surface.hasPointerCapture && !surface.hasPointerCapture(e.pointerId)) {
+          surface.setPointerCapture(e.pointerId);
+        }
       }
     });
+    surface.addEventListener('lostpointercapture',e=>{if (e.target === surface) end(e.pointerId);});
     surface.addEventListener('contextmenu',e=>e.preventDefault());
   }
-  // Отпускание может прийти вне исходного элемента, если браузер передал захват.
   window.addEventListener('pointerup',e=>end(e.pointerId),true);
-  window.addEventListener('pointercancel',e=>{if(input===e.pointerId) cancel();},true);
-  // Синтетический click после pointerup не должен немедленно сбросить результат.
-  let retryDown=false;
-  control.addEventListener('pointerdown',()=>{retryDown=endStates.includes(scene.phase);});
+  window.addEventListener('pointercancel',e=>end(e.pointerId),true);
+
+  // Активация экранным диктором не обязательно сопровождается pointerdown или keydown.
   control.addEventListener('click',e=>{
-    if (retryDown){retryDown=false;continueRun();return;}
-    if(e.detail===0) {
-      if(endStates.includes(scene.phase)) continueRun();
-      else if(input==='toggle') end('toggle'); else begin('toggle');
-    }
+    const previous = pendingControlClick;
+    pendingControlClick = null;
+    if (previous && (e.pointerId === previous.id || performance.now()-previous.time < 400)) return;
+    if (begin('activation')) end('activation');
   });
   window.addEventListener('keydown',e=>{
     if (e.altKey || e.metaKey || e.ctrlKey) return;
@@ -292,13 +325,18 @@
       }
       return;
     }
-    if (e.code!=='Space') return;
-    e.preventDefault();if (!e.repeat) begin('key');
+    if (e.code !== 'Space' && !(e.key === 'Enter' && e.target === control)) return;
+    pendingControlClick = null;
+    e.preventDefault();
+    if (!e.repeat) begin(e.code);
   });
-  window.addEventListener('keyup',e=>{if(e.code==='Space' && input==='key'){e.preventDefault();end('key');}});
-  window.addEventListener('blur',cancel);
+  window.addEventListener('keyup',e=>{
+    if (input?.key === e.code) { e.preventDefault(); end(e.code); }
+  });
+  function finishActiveThrow() { if (input) end(input.key); }
+  window.addEventListener('blur',finishActiveThrow);
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden){cancel();cancelAnimationFrame(pending);pending=0;previousTime=0;}else startFrame();
+    if(document.hidden){finishActiveThrow();cancelAnimationFrame(pending);pending=0;previousTime=0;}else startFrame();
   });
   new ResizeObserver(resize).observe(field);
   for (const image of Object.values(images)) image.addEventListener('load',draw);
