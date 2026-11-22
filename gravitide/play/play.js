@@ -25,7 +25,7 @@
   store.textContent = t('Play on iPhone','Играть на iPhone');
   const sprites = ['anchor','drifter','guardian','drifter','guardian'];
   const labels = [t('ANCHOR','ЯКОРЬ'), t('DRIFTER','ДРОН'), null, t('SCOUT','РАЗВЕДЧИК'), t('INTERCEPTOR','ПЕРЕХВАТЧИК')];
-  const endStates = ['early','miss','blocked','hit'];
+  const endStates = ['miss','blocked','hit'];
   const recordKey = 'gravitide-demo-five-targets-best';
   let best = 0;
   function readBest() {
@@ -35,9 +35,9 @@
     } catch {}
   }
   readBest();
-  const idleTip = t('Hold to capture the fragment. Release when the dotted line crosses the target.','Зажми, чтобы поймать обломок. Отпусти, когда пунктир пройдёт через цель.');
+  const idleTip = t('Hold to capture the fragment. Release when the dotted line turns gold.','Зажми, чтобы поймать обломок. Отпусти, когда пунктир станет золотым.');
   const controls = t('Touch, mouse or Space','Касание, мышь или пробел');
-  let placing = false;
+  let placing = false, pressedAt = 0;
   let rippleTime = -1;
   let input = null, lastState = '', previousTime = 0, impactAge = 0;
   let width = 0, height = 0, ratio = 1, scale = 1, pending = 0;
@@ -74,7 +74,8 @@
     const c = scene.center, dest = scene.target, p = scene.fragment;
     const held = scene.phase === 'hold', hit = scene.phase === 'hit';
     const aim = held && scene.ready && scene.aligned;
-    const accent = aim ? '#ffe6a2' : '#92eee4';
+    const blocked = held && scene.ready && scene.aimOutcome === 'blocked';
+    const accent = aim ? '#ffe6a2' : blocked ? '#c7adff' : '#92eee4';
     // Орбитальные отметки и короткий хвост подсказывают направление движения.
     for (const radius of [86,104]) ring(c.x,c.y,radius,'#294351',.55,-2.96,-.46);
     for (let n=0;n<56;n++) {
@@ -90,7 +91,7 @@
     if (scene.freeFlight && !reduce && rippleAge >= 0 && rippleAge < .32) {
       ring(c.x,c.y,12+rippleAge*65,'rgba(158,243,236,'+(1-rippleAge/.32)+')',1.4);
     }
-    if (held) ring(c.x,c.y,15,accent,2,-Math.PI/2,-Math.PI/2 + Math.PI*2*Math.min(1,scene.held/.36));
+    if (held) ring(c.x,c.y,15,accent,2,-Math.PI/2,-Math.PI/2 + Math.PI*2*Math.min(1,scene.held/scene.chargeTime));
     const s = scene.shipAngle, sx = c.x+Math.cos(s)*43, sy = c.y+Math.sin(s)*43;
     ctx.save(); ctx.translate(sx,sy); ctx.rotate(s+Math.PI/2);
     ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,7); ctx.lineTo(-3,0); ctx.lineTo(-6,-7); ctx.closePath();
@@ -133,11 +134,20 @@
         line([[dest.x+Math.cos(a)*r,dest.y+Math.sin(a)*r],[dest.x+Math.cos(a)*(r+4),dest.y+Math.sin(a)*(r+4)]],'#a9e2d1',1.6);
       }
     }
-    if (held && scene.ready) {
-      const v = scene.direction;
+    if ((held && scene.ready) || scene.phase === 'flight') {
+      const shot = held ? scene.preview : scene.shot;
+      const remaining = shot.duration - scene.flight;
+      const x = shot.x + shot.vx*remaining, y = shot.y + shot.vy*remaining;
+      const guideColor = shot.outcome === 'hit' ? '#ffe6a2' :
+        shot.outcome === 'blocked' ? '#c7adff' : '#92eee4';
       ctx.setLineDash([2,5]); ctx.lineCap='round';
-      line([[p.x,p.y],[p.x+v.x*193,p.y+v.y*193]],accent,1.6);
+      line([[p.x,p.y],[x,y]],guideColor,1.6);
       ctx.setLineDash([]); ctx.lineCap='butt';
+      if (shot.outcome !== 'miss') {
+        const arrival = scene.targetAt(scene.age+remaining);
+        ring(arrival.x,arrival.y,arrival.radius,guideColor,1.2);
+        ring(x,y,3,guideColor,2);
+      }
     }
     if (scene.phase === 'flight') line([[p.x-scene.shot.vx*.06,p.y-scene.shot.vy*.06],[p.x,p.y]],'#8ce7df',3);
     if (!scene.shot) {
@@ -149,7 +159,8 @@
     }
   }
   function updatePanel() {
-    const state = scene.ready ? (scene.aligned ? 'aim' : 'ready') : scene.phase;
+    const aiming = {hit:'aim', blocked:'shield', miss:'ready'};
+    const state = scene.ready ? aiming[scene.aimOutcome] : scene.phase;
     const panelKey = [scene.stage, scene.throws, state].join('/');
     if (panelKey === lastState) return;
     lastState = panelKey;
@@ -174,9 +185,9 @@
     }
     if (state === 'hold') {tip=t('Charging the fragment…','Обломок заряжается…');label=t('Charging…','Заряжается…');}
     if (state === 'ready') {tip=t('Wait for the gold trajectory.','Дождись золотой траектории.');label=t('Aiming…','Прицеливание…');}
+    if (state === 'shield') {tip=t('The shield will stop this throw. Hold for an opening.','На пути щит. Подержи ещё немного.');label=t('Shield ahead','На пути щит');}
     if (state === 'aim') {tip=t('On target. Release now!','Цель на линии. Отпускай!');label=t('Release!','Отпускай!');}
     if (state === 'flight') {tip=t('Fragment in flight.','Обломок летит.');label=t('Throw in flight','Бросок');}
-    if (state === 'early') {tip=t('Too soon. Hold a little longer to charge the fragment.','Рано. Подержи чуть дольше, чтобы зарядить обломок.');}
     if (state === 'miss') {tip=t('Missed. Release when the aim line turns gold.','Мимо. Отпусти, когда пунктир станет золотым.');}
     if (state === 'blocked') tip=t('The shield stopped your shot. Wait for a gold trajectory before release.','Обломок попал в щит. Дождись золотой траектории перед броском.');
     if (endStates.includes(state)) label=t('Try again','Ещё раз');
@@ -226,7 +237,7 @@
   function end(key) {
     if (input!==key) return;
     input=null;
-    if (scene.release(placing)) document.dispatchEvent(new Event('gravitide:throw'));
+    if (scene.release(placing && performance.now()-pressedAt < scene.chargeTime*1000)) document.dispatchEvent(new Event('gravitide:throw'));
     placing=false;
     updatePanel();startFrame();
   }
@@ -246,17 +257,18 @@
       if (!e.isPrimary || e.button!==0) return;
       if (surface===control && endStates.includes(scene.phase)) return;
       if (begin(e.pointerId)) {
+        pressedAt = performance.now();
         placing = surface === field && scene.freeFlight;
         if (placing) placeAtPointer(e);
         surface.setPointerCapture(e.pointerId);
         e.preventDefault();
       }
     });
-    surface.addEventListener('pointerup',e=>end(e.pointerId));
-    surface.addEventListener('lostpointercapture',e=>{if(e.target===surface && input===e.pointerId) cancel();});
-    surface.addEventListener('pointercancel',e=>{if(input===e.pointerId) cancel();});
     surface.addEventListener('contextmenu',e=>e.preventDefault());
   }
+  // Отпускание может прийти вне исходного элемента, если браузер передал захват.
+  window.addEventListener('pointerup',e=>end(e.pointerId),true);
+  window.addEventListener('pointercancel',e=>{if(input===e.pointerId) cancel();},true);
   // Синтетический click после pointerup не должен немедленно сбросить результат.
   let retryDown=false;
   control.addEventListener('pointerdown',()=>{retryDown=endStates.includes(scene.phase);});

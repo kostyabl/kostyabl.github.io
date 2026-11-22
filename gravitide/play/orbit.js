@@ -3,6 +3,9 @@ class ThrowScene {
   center = {x: -35, y: 24};
   radius = 64;
   speed = 330;
+  fragmentRadius = 13;
+  chargeTime = .20;
+  reactionTime = .40;
   levelCount = 5;
   halfWidth = 175;
   halfHeight = 126.5;
@@ -20,7 +23,12 @@ class ThrowScene {
   clampCenter(x, y) {
     const maxX = Math.max(0, this.halfWidth-this.radius-7);
     const maxY = Math.max(0, this.halfHeight-this.radius-7);
-    this.center = {x:Math.max(-maxX,Math.min(maxX,x)), y:Math.max(-maxY,Math.min(maxY,y))};
+    const next = {x:Math.max(-maxX,Math.min(maxX,x)), y:Math.max(-maxY,Math.min(maxY,y))};
+    if (this.center.x === next.x && this.center.y === next.y) return;
+    // Мелкое дрожание пальца не должно сбрасывать помощь при отпускании.
+    if (Math.hypot(next.x-this.center.x,next.y-this.center.y) > 4) this.grace = 0;
+    this.center = next;
+    if (this.phase === 'hold') this.updateAim(0);
   }
   placeRing(x, y) {
     if (this.freeFlight && (this.phase === 'idle' || this.phase === 'hold')) this.clampCenter(x,y);
@@ -32,6 +40,8 @@ class ThrowScene {
     this.held = 0;
     this.flight = 0;
     this.shot = null;
+    this.preview = null;
+    this.grace = 0;
     this.shipAngle = 1.65;
   }
   continueRun() {
@@ -76,7 +86,7 @@ class ThrowScene {
     const a = this.targetAt(start), b = this.targetAt(start + dt);
     const rx = x-a.x, ry = y-a.y;
     const dx = vx*dt-(b.x-a.x), dy = vy*dt-(b.y-a.y);
-    const gap = rx*rx+ry*ry-(a.radius+4)**2;
+    const gap = rx*rx+ry*ry-(a.radius+this.fragmentRadius)**2;
     if (gap <= 0) return start;
     const length = dx*dx+dy*dy, dot = rx*dx+ry*dy;
     const disc = dot*dot-length*gap;
@@ -84,41 +94,83 @@ class ThrowScene {
     const fraction = gap/(-dot + Math.sqrt(disc));
     return fraction <= 1 ? start+fraction*dt : null;
   }
-  get aimOutcome() {
-    const p = this.fragment, v = this.direction;
-    const vx = v.x*this.speed, vy = v.y*this.speed;
-    // Неподвижные цели допускают расчёт одним отрезком.
-    const horizon = this.freeFlight ? this.flightLimit : 1;
-    const step = this.stage === 1 || this.freeFlight ? 1/60 : 1;
-    for (let i=0; i<Math.ceil(horizon/step); i++) {
+  planShot(p, vx, vy) {
+    const edgeTime = (pos, velocity, bound) => velocity === 0 ? Infinity :
+      (Math.sign(velocity)*(bound+8)-pos)/velocity;
+    const horizon = Math.max(0, Math.min(this.flightLimit,
+      edgeTime(p.x,vx,this.halfWidth), edgeTime(p.y,vy,this.halfHeight)));
+    const steps = this.stage === 1 || this.freeFlight ? Math.max(1,Math.ceil(horizon*60)) : 1;
+    const step = horizon/steps;
+    for (let i=0; i<steps; i++) {
       const t = i*step;
-      const impact = this.contact(p.x+vx*t,p.y+vy*t,vx,vy,this.age+t,Math.min(step,horizon-t));
-      if (impact !== null) return this.shieldClosed(impact) ? 'blocked' : 'hit';
+      const impact = this.contact(p.x+vx*t,p.y+vy*t,vx,vy,this.age+t,step);
+      if (impact !== null) {
+        return {x:p.x,y:p.y,vx,vy,duration:impact-this.age,
+          outcome:this.shieldClosed(impact) ? 'blocked' : 'hit'};
+      }
     }
-    return 'miss';
+    return {x:p.x,y:p.y,vx,vy,duration:horizon,outcome:'miss'};
   }
+  updateAim(dt) {
+    const p = this.fragment, v = this.direction;
+    this.preview = this.planShot(p,v.x*this.speed,v.y*this.speed);
+    this.grace = Math.max(0,this.grace-dt);
+    if (this.preview.outcome === 'hit') {
+      this.grace = this.reactionTime;
+      return;
+    }
+    if (this.preview.outcome === 'blocked') { this.grace = 0; return; }
+
+    // Если пунктир касается видимой мишени, учитываем её перемещение за время полёта.
+    const nearRay = target => {
+      const dx=target.x-p.x, dy=target.y-p.y;
+      const along=dx*v.x+dy*v.y;
+      return along > 0 && Math.abs(dx*v.y-dy*v.x) <= target.radius+this.fragmentRadius+.12*along;
+    };
+    const target = this.target;
+    let lead = target;
+    for (let i=0; i<8; i++) {
+      const travel = Math.hypot(lead.x-p.x,lead.y-p.y)/this.speed;
+      lead = this.targetAt(this.age+travel);
+    }
+    const nearby = nearRay(target) || nearRay(lead);
+    if (!nearby && this.grace === 0) return;
+    const dx=lead.x-p.x, dy=lead.y-p.y, distance=Math.hypot(dx,dy);
+    if (!distance) return;
+    const assisted = this.planShot(p,this.speed*dx/distance,this.speed*dy/distance);
+    if (assisted.outcome === 'miss') return;
+    this.preview = assisted;
+    if (nearby && assisted.outcome === 'hit') this.grace = this.reactionTime;
+  }
+  get aimOutcome() { return this.preview?.outcome || 'miss'; }
   get flightLimit() {
     if (!this.freeFlight) return 1.3;
     return Math.hypot(this.halfWidth+125,this.halfHeight+85)/this.speed + .35;
   }
   get aligned() { return this.aimOutcome === 'hit'; }
-  get ready() { return this.phase === 'hold' && this.held >= .36; }
+  get ready() { return this.phase === 'hold' && this.held >= this.chargeTime; }
   hold() {
     if (this.phase !== 'idle') return;
     this.phase = 'hold';
     this.held = 0;
+    this.updateAim(0);
   }
   release(placementTap = false) {
     if (this.phase !== 'hold') return false;
-    if (!this.ready) { this.phase = placementTap && this.freeFlight ? 'idle' : 'early'; return false; }
-    const p = this.fragment, v = this.direction;
-    this.shot = {x:p.x, y:p.y, vx:v.x*this.speed, vy:v.y*this.speed};
+    if (placementTap && this.freeFlight && !this.ready) {
+      this.phase = 'idle';
+      this.preview = null;
+      this.grace = 0;
+      return false;
+    }
+    // Запускаем именно показанный бросок, включая рассчитанное время встречи.
+    this.shot = {...this.preview};
     this.throws++;
     this.phase = 'flight';
     return true;
   }
   step(dt) {
-    if (this.freeFlight && (this.phase === 'miss' || this.phase === 'early')) {
+    if (this.freeFlight && this.phase === 'miss') {
       this.age += dt;
       return;
     }
@@ -130,20 +182,16 @@ class ThrowScene {
       this.held += dt;
       this.angle += dt * (this.ready && this.aligned ? .56 : 1.6);
       this.shipAngle += dt*.92;
+      this.updateAim(dt);
     }
     if (this.phase !== 'flight') return;
     const p = this.shot;
-    const impact = this.contact(p.x,p.y,p.vx,p.vy,start,dt);
-    const elapsed = impact === null ? dt : impact-start;
+    const elapsed = Math.min(dt,Math.max(0,p.duration-this.flight));
     p.x += p.vx*elapsed; p.y += p.vy*elapsed;
     this.flight += elapsed;
-    if (impact !== null) {
-      this.age = impact;
-      this.phase = this.shieldClosed(impact) ? 'blocked' : 'hit';
-    } else if (this.flight > this.flightLimit ||
-        Math.abs(p.x) > (this.freeFlight ? this.halfWidth+8 : 210) ||
-        Math.abs(p.y) > (this.freeFlight ? this.halfHeight+8 : 137)) {
-      this.phase = 'miss';
+    if (this.flight >= p.duration) {
+      this.age = start+elapsed;
+      this.phase = p.outcome;
     }
   }
 }
