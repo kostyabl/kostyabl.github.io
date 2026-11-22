@@ -206,7 +206,7 @@
       if (begin(e.pointerId)) {surface.setPointerCapture(e.pointerId);e.preventDefault();}
     });
     surface.addEventListener('pointerup',e=>end(e.pointerId));
-    surface.addEventListener('lostpointercapture',e=>{if(input===e.pointerId) cancel();});
+    surface.addEventListener('lostpointercapture',e=>{if(e.target===surface && input===e.pointerId) cancel();});
     surface.addEventListener('pointercancel',e=>{if(input===e.pointerId) cancel();});
     surface.addEventListener('contextmenu',e=>e.preventDefault());
   }
