@@ -136,7 +136,7 @@
   function end(key) {
     if (input!==key) return;
     input=null;
-    if (scene.release()) countThrow();
+    if (scene.release()) document.dispatchEvent(new Event('gravitide:throw'));
     updatePanel();startFrame();
   }
   function cancel() {if(input!==null){input=null;reset();}}
@@ -170,8 +170,6 @@
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden){cancel();cancelAnimationFrame(pending);pending=0;previousTime=0;}else startFrame();
   });
-  let throws=0;
-  function countThrow() { throws++; }
   new ResizeObserver(resize).observe(field);
   for (const image of Object.values(images)) image.addEventListener('load',draw);
   updatePanel();resize();startFrame();
