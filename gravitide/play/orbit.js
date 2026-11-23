@@ -18,7 +18,7 @@ class ThrowScene {
   setFieldSize(halfWidth, halfHeight) {
     this.halfWidth = halfWidth;
     this.halfHeight = halfHeight;
-    if (this.freeFlight) this.clampCenter(this.center.x, this.center.y);
+    this.clampCenter(this.center.x, this.center.y);
   }
   clampCenter(x, y) {
     const maxX = Math.max(0, this.halfWidth-this.radius-7);
@@ -31,7 +31,7 @@ class ThrowScene {
     if (this.phase === 'hold') this.updateAim(0);
   }
   placeRing(x, y) {
-    if (this.freeFlight && (this.phase === 'idle' || this.phase === 'hold')) this.clampCenter(x,y);
+    if (this.phase === 'idle' || this.phase === 'hold') this.clampCenter(x,y);
   }
   reset() {
     this.phase = 'idle';
