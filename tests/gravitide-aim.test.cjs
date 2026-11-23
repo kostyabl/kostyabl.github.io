@@ -77,7 +77,8 @@ test('на всех уровнях исход и точка встречи со�
       for (let tick=0;tick<36;tick++) {
         const scene=new ThrowScene();
         scene.stage=stage;
-        scene.step(tick*.12);
+        // Перебираем фазы щита отдельно от длительности удержания.
+        scene.step(stage === 2 ? (tick%6)*.6 : tick*.12);
         scene.placeRing(-40,32);
         scene.hold();
         const holdFrames=Math.ceil((.25+tick*.055)*fps);
@@ -88,4 +89,27 @@ test('на всех уровнях исход и точка встречи со�
     }
   }
   assert.deepEqual(seen,new Set(['miss','hit','blocked']));
+});
+
+test('прицел проходит через окно попадания с той же угловой скоростью на всех уровнях', () => {
+  for (let stage=0; stage<5; stage++) {
+    for (const fps of [30,60,120]) {
+      const scene = new ThrowScene();
+      scene.stage = stage;
+      scene.hold();
+      const initialAngle = scene.angle;
+      scene.step(1/fps);
+      const stepAngle = scene.angle-initialAngle;
+      assert.ok(stepAngle > 0);
+      const outcomes = new Set();
+      for (let frame=0; frame<fps*8; frame++) {
+        outcomes.add(scene.aimOutcome);
+        const before = scene.angle;
+        scene.step(1/fps);
+        assert.ok(Math.abs(scene.angle-before-stepAngle) < 1e-10,
+          `Цель ${stage+1}, ${fps} кадров/с: скорость изменилась при прицеливании`);
+      }
+      assert.ok(outcomes.has('hit') && outcomes.has('miss'));
+    }
+  }
 });
