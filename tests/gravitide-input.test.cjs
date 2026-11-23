@@ -5,7 +5,7 @@ const {join} = require('node:path');
 const vm = require('node:vm');
 
 // Настоящие обработчики страницы; вместо монитора кадры запускает тест.
-function game(nativeTouch = false) {
+function game(nativeTouch = false, reducedMotion = false) {
   const window = new EventTarget();
   if (nativeTouch) window.ontouchstart = null;
   const document = new EventTarget();
@@ -16,7 +16,7 @@ function game(nativeTouch = false) {
     if (!elements.has(id)) {
       elements.set(id, Object.assign(new EventTarget(), {
         dataset:{}, classList:{toggle() {}}, closest() { return null; },
-        getContext() { return null; },
+        focus() {}, getContext() { return null; },
         getBoundingClientRect() { return {left:0,top:0,width:390,height:420}; }
       }));
     }
@@ -25,7 +25,7 @@ function game(nativeTouch = false) {
   Object.assign(document, {documentElement:{}, getElementById:element, querySelector:()=>element('canvas')});
   document.addEventListener('gravitide:throw',()=>throws++);
   const context = vm.createContext({
-    document, window, Event, navigator:{language:'en'}, matchMedia:q=>({matches:nativeTouch && q === '(pointer: coarse)'}),
+    document, window, Event, navigator:{language:'en'}, matchMedia:q=>({matches:reducedMotion && q.includes('reduced-motion')}),
     Image:class extends EventTarget {}, ResizeObserver:class { observe() {} },
     devicePixelRatio:1, localStorage:{getItem(){return null;},setItem(){}},
     performance:{now:()=>time},
@@ -49,13 +49,13 @@ function game(nativeTouch = false) {
       work.forEach(fn=>fn(time));
     }
   }
-  function tap(surface='control') {
+  function tap(surface='field') {
     send(surface,'pointerdown');
     send('window','pointerup');
     send(surface,'click',{detail:1});
   }
   function hitNext() {
-    send('control','pointerdown');
+    send('field','pointerdown');
     let framesLeft=1000;
     while (element('control').textContent!=='Release!' && framesLeft-- > 0) tick();
     assert.ok(framesLeft>0,'ожидали пригодную траекторию');
@@ -135,8 +135,37 @@ test('системное прерывание сохраняет прицел д
   }
 });
 
-test('активация кнопки без событий указателя выпускает обломок за одно нажатие',()=>{
-  const g=game();
-  g.send('control','click',{detail:0,pointerId:-1});
-  assert.equal(g.count(),1);
+test('короткий клик по кнопке только прицеливается, повторный клик бросает',()=>{
+  for (const accessible of [false,true]) {
+    const g=game();
+    const click=()=>accessible ? g.send('control','click',{detail:0,pointerId:-1}) : g.tap('control');
+    click();
+    g.tick(120);
+    assert.equal(g.count(),0);
+    assert.equal(g.element('control').textContent,'Throw');
+    click();
+    assert.equal(g.count(),1);
+  }
+});
+
+test('четыре цели сменяются сами, финал и перезапуск не бросают обломок',()=>{
+  for (const reduce of [false,true]) {
+    const g=game(false,reduce);
+    for (let hit=1;hit<=5;hit++) {
+      g.hitNext();
+      assert.equal(g.count(),hit);
+      assert.equal(g.element('progress').textContent,'Target '+Math.min(hit+1,5)+' / 5');
+    }
+    g.tick(180);
+    assert.equal(g.element('replay').hidden,false);
+    g.tap('status');
+    g.tap('field');
+    assert.equal(g.count(),5);
+    g.send('replay','click');
+    g.tick(180);
+    assert.equal(g.element('progress').textContent,'Target 1 / 5');
+    assert.equal(g.element('shots').textContent,'Throws · 0');
+    assert.equal(g.element('replay').hidden,true);
+    assert.equal(g.count(),5);
+  }
 });
