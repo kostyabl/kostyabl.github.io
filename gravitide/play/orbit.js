@@ -2,10 +2,21 @@
 class ThrowScene {
   center = {x: -35, y: 24};
   radius = 64;
-  speed = 330;
+  speed = 240;
   fragmentRadius = 13;
   chargeTime = .20;
-  reactionTime = .40;
+  // Параметры колодца из GravityCore, линейный масштаб арены — 0.4.
+  wellRadius = 104;
+  coreRadius = 60;
+  softening = 8;
+  gravityStrength = 400;
+  referenceDistance = 60;
+  radialDamping = 2;
+  captureThreshold = 16;
+  captureImpulse = 100;
+  forceRampUp = .08;
+  maxSpeed = 1200;
+  wallRestitution = .9;
   levelCount = 5;
   halfWidth = 175;
   halfHeight = 126.5;
@@ -25,10 +36,8 @@ class ThrowScene {
     const maxY = Math.max(0, this.halfHeight-this.radius-7);
     const next = {x:Math.max(-maxX,Math.min(maxX,x)), y:Math.max(-maxY,Math.min(maxY,y))};
     if (this.center.x === next.x && this.center.y === next.y) return;
-    // Мелкое дрожание пальца не должно сбрасывать помощь при отпускании.
-    if (Math.hypot(next.x-this.center.x,next.y-this.center.y) > 4) this.grace = 0;
     this.center = next;
-    if (this.phase === 'hold') this.updateAim(0);
+    if (this.phase === 'hold') this.updateAim();
   }
   placeRing(x, y) {
     if (this.phase === 'idle' || this.phase === 'hold') this.clampCenter(x,y);
@@ -41,7 +50,15 @@ class ThrowScene {
     this.flight = 0;
     this.shot = null;
     this.preview = null;
-    this.grace = 0;
+    const orbitSpeed = Math.sqrt(this.gravityAt(this.radius)*this.radius);
+    this.body = {
+      x:this.center.x+this.radius*Math.cos(this.angle),
+      y:this.center.y+this.radius*Math.sin(this.angle),
+      vx:-Math.sin(this.angle)*orbitSpeed,
+      vy:Math.cos(this.angle)*orbitSpeed
+    };
+    this.insideWell = false;
+    this.trail = [];
     this.shipAngle = 1.65;
   }
   continueRun() {
@@ -76,11 +93,59 @@ class ThrowScene {
   shieldClosed(time) {
     return this.stage === 2 && time % 3.6 < 1.5;
   }
-  get fragment() {
-    if (this.shot) return this.shot;
-    return {x:this.center.x + this.radius * Math.cos(this.angle), y:this.center.y + this.radius * Math.sin(this.angle)};
+  get fragment() { return this.shot || this.body; }
+  get direction() {
+    const speed = Math.hypot(this.body.vx,this.body.vy);
+    return speed > 0 ? {x:this.body.vx/speed,y:this.body.vy/speed} : {x:0,y:0};
   }
-  get direction() { return {x:-Math.sin(this.angle), y:Math.cos(this.angle)}; }
+  gravityAt(distance) {
+    if (distance >= this.wellRadius) return 0;
+    const scale = this.gravityStrength*this.referenceDistance**2;
+    const base = distance < this.coreRadius
+      ? scale/(this.coreRadius**2+this.softening**2)*distance/this.coreRadius
+      : scale/(distance**2+this.softening**2);
+    return base*(1-(distance/this.wellRadius)**2)**2;
+  }
+  integrateHeld(dt) {
+    const p = this.body;
+    const dx = this.center.x-p.x, dy = this.center.y-p.y;
+    const distance = Math.hypot(dx,dy);
+    const inside = distance > 0 && distance < this.wellRadius;
+    if (inside) {
+      const nx=dx/distance, ny=dy/distance;
+      const tangent = -ny*p.vx+nx*p.vy;
+      if (!this.insideWell && Math.abs(tangent) < this.captureThreshold) {
+        const impulse = (tangent < 0 ? -1 : 1)*this.captureImpulse;
+        p.vx -= ny*impulse;
+        p.vy += nx*impulse;
+      }
+      const radialSpeed = p.vx*nx+p.vy*ny;
+      const acceleration = this.gravityAt(distance)*Math.min(1,this.held/this.forceRampUp)
+        -this.radialDamping*radialSpeed;
+      p.vx += nx*acceleration*dt;
+      p.vy += ny*acceleration*dt;
+    }
+    this.insideWell = inside;
+    const speed = Math.hypot(p.vx,p.vy);
+    if (speed > this.maxSpeed) {
+      p.vx *= this.maxSpeed/speed;
+      p.vy *= this.maxSpeed/speed;
+    }
+    p.x += p.vx*dt;
+    p.y += p.vy*dt;
+    // Отскок от стен сохраняет обломок на арене при переносе колодца.
+    for (const [axis,velocity,bound] of [
+      ['x','vx',this.halfWidth-this.fragmentRadius],
+      ['y','vy',this.halfHeight-this.fragmentRadius]
+    ]) {
+      if (Math.abs(p[axis]) > bound) {
+        const side = Math.sign(p[axis]);
+        p[axis] = side*bound;
+        if (p[velocity]*side > 0) p[velocity] *= -this.wallRestitution;
+      }
+    }
+    this.angle = Math.atan2(p.y-this.center.y,p.x-this.center.x);
+  }
   // В системе отсчёта цели ищем первое касание за этот шаг, включая касание по краю.
   contact(x, y, vx, vy, start, dt) {
     const a = this.targetAt(start), b = this.targetAt(start + dt);
@@ -111,36 +176,10 @@ class ThrowScene {
     }
     return {x:p.x,y:p.y,vx,vy,duration:horizon,outcome:'miss'};
   }
-  updateAim(dt) {
-    const p = this.fragment, v = this.direction;
-    this.preview = this.planShot(p,v.x*this.speed,v.y*this.speed);
-    this.grace = Math.max(0,this.grace-dt);
-    if (this.preview.outcome === 'hit') {
-      this.grace = this.reactionTime;
-      return;
-    }
-    if (this.preview.outcome === 'blocked') { this.grace = 0; return; }
-
-    // Если пунктир касается видимой мишени, учитываем её перемещение за время полёта.
-    const nearRay = target => {
-      const dx=target.x-p.x, dy=target.y-p.y;
-      const along=dx*v.x+dy*v.y;
-      return along > 0 && Math.abs(dx*v.y-dy*v.x) <= target.radius+this.fragmentRadius+.12*along;
-    };
-    const target = this.target;
-    let lead = target;
-    for (let i=0; i<8; i++) {
-      const travel = Math.hypot(lead.x-p.x,lead.y-p.y)/this.speed;
-      lead = this.targetAt(this.age+travel);
-    }
-    const nearby = nearRay(target) || nearRay(lead);
-    if (!nearby && this.grace === 0) return;
-    const dx=lead.x-p.x, dy=lead.y-p.y, distance=Math.hypot(dx,dy);
-    if (!distance) return;
-    const assisted = this.planShot(p,this.speed*dx/distance,this.speed*dy/distance);
-    if (assisted.outcome === 'miss') return;
-    this.preview = assisted;
-    if (nearby && assisted.outcome === 'hit') this.grace = this.reactionTime;
+  updateAim() {
+    const p = this.body, direction = this.direction;
+    const launchSpeed = Math.min(this.maxSpeed,Math.max(this.speed,Math.hypot(p.vx,p.vy)));
+    this.preview = this.planShot(p,direction.x*launchSpeed,direction.y*launchSpeed);
   }
   get aimOutcome() { return this.preview?.outcome || 'miss'; }
   get flightLimit() {
@@ -152,7 +191,8 @@ class ThrowScene {
     if (this.phase !== 'idle') return;
     this.phase = 'hold';
     this.held = 0;
-    this.updateAim(0);
+    this.insideWell = false;
+    this.updateAim();
   }
   release() {
     if (this.phase !== 'hold') return false;
@@ -170,12 +210,17 @@ class ThrowScene {
     if (!['idle','hold','flight'].includes(this.phase)) return;
     const start = this.age;
     this.age += dt;
-    if (this.phase === 'idle') this.angle = -3.72 + .23*Math.sin(this.age*.85);
     if (this.phase === 'hold') {
-      this.held += dt;
-      this.angle += dt * 1.6;
+      // Малые шаги сохраняют устойчивость силы и отскоков при редких кадрах.
+      const steps = Math.max(1,Math.ceil(dt*240));
+      for (let i=0;i<steps;i++) {
+        this.held += dt/steps;
+        this.integrateHeld(dt/steps);
+      }
       this.shipAngle += dt*.92;
-      this.updateAim(dt);
+      this.trail.push({x:this.body.x,y:this.body.y});
+      if (this.trail.length > 20) this.trail.shift();
+      this.updateAim();
     }
     if (this.phase !== 'flight') return;
     const p = this.shot;

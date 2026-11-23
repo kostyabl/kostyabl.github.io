@@ -86,7 +86,7 @@
       const a = n*Math.PI/28, r = n%7 ? 71 : 75;
       line([[c.x+Math.cos(a)*69,c.y+Math.sin(a)*69],[c.x+Math.cos(a)*r,c.y+Math.sin(a)*r]],'#41606c',.7);
     }
-    ring(c.x,c.y,scene.radius,held ? '#477f89' : '#304c5a',1);
+    ring(c.x,c.y,scene.wellRadius,held ? '#477f89' : '#304c5a',1);
     const glow = ctx.createRadialGradient(c.x,c.y,1,c.x,c.y,63);
     glow.addColorStop(0,held ? '#71ede64d' : '#5fcac534'); glow.addColorStop(1,'#5fcac500');
     ctx.fillStyle = glow; ctx.fillRect(c.x-64,c.y-64,128,128);
@@ -155,7 +155,10 @@
     }
     if (scene.phase === 'flight') line([[p.x-scene.shot.vx*.06,p.y-scene.shot.vy*.06],[p.x,p.y]],'#8ce7df',3);
     if (!scene.shot) {
-      for (let i=0;i<14;i++) ring(c.x,c.y,scene.radius,'rgba(123,225,220,'+(i+1)/23+')',2,scene.angle-(14-i)*.042,scene.angle-(13-i)*.042);
+      for (let i=1;i<scene.trail.length;i++) {
+        const a=scene.trail[i-1], b=scene.trail[i];
+        line([[a.x,a.y],[b.x,b.y]],'rgba(123,225,220,'+i/scene.trail.length+')',2);
+      }
     }
     if (!hit && scene.phase !== 'miss') {
       sprite('debris',p.x,p.y,30,scene.angle*.7,'#9bafb4');
@@ -299,7 +302,6 @@
     if (index === 0 && scene.phase === 'hold') {
       scene.phase = 'idle';
       scene.preview = null;
-      scene.grace = 0;
     }
     input = null;
     refreshInput();
