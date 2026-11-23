@@ -134,10 +134,12 @@ test('перетаскивание перемещает кольцо на каж
       assert.ok(g.scene.center.y>center.y);
       assert.equal(g.count(),0);
       const preview={...g.scene.preview};
-      if (touch) g.send('window','touchend',{changedTouches:[end]});
-      else g.send('window','pointerup',end);
+      const last={...end,clientX:270};
+      if (touch) g.send('window','touchend',{changedTouches:[last]});
+      else g.send('window','pointerup',last);
       assert.equal(g.count(),1);
       assert.deepEqual({...g.scene.shot},preview);
+      assert.ok(Math.abs(g.scene.center.x-(270-195)/(390/350))<1e-8);
     }
   }
 });

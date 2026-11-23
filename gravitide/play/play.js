@@ -306,8 +306,9 @@
     input = null;
     refreshInput();
   }
-  function end(key) {
+  function end(key, point = null) {
     if (!input || input.key !== key) return;
+    if (input.point && point) moveAim(point);
     input.released = true;
     input = null;
     refreshInput();
@@ -340,14 +341,14 @@
     }
   });
   window.addEventListener('touchend',e=>{
-    for (const touch of e.changedTouches) end(touchKey(touch));
+    for (const touch of e.changedTouches) end(touchKey(touch),fieldPoint(touch));
   },true);
   window.addEventListener('touchcancel',e=>{
     for (const touch of e.changedTouches) {
       if (input?.key === touchKey(touch)) cancelInput();
     }
   },true);
-  window.addEventListener('pointerup',e=>end(e.pointerId),true);
+  window.addEventListener('pointerup',e=>end(e.pointerId,fieldPoint(e)),true);
   window.addEventListener('pointercancel',e=>{if (input?.key === e.pointerId) cancelInput();},true);
 
   // Экранный диктор может активировать кнопку без касания или нажатия клавиши.
