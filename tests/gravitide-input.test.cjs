@@ -34,6 +34,7 @@ function game(nativeTouch = false, reducedMotion = false) {
   });
   for (const file of ['orbit.js','play.js']) {
     vm.runInContext(readFileSync(join(__dirname,'../gravitide/play',file),'utf8'),context);
+    if (file === 'orbit.js') vm.runInContext('ThrowScene = class extends ThrowScene { constructor() { super(); globalThis.scene = this; } }',context);
   }
   function send(target,type,props={}) {
     const event = Object.assign(new Event(type,{cancelable:true}), {
@@ -63,7 +64,7 @@ function game(nativeTouch = false, reducedMotion = false) {
     tick(120);
     assert.equal(element('store').hidden,false);
   }
-  return {send,tick,tap,hitNext,element,count:()=>throws};
+  return {send,tick,tap,hitNext,element,scene:context.scene,count:()=>throws};
 }
 
 test('три быстрых нажатия дают три броска без отдельной кнопки повтора',()=>{
@@ -86,40 +87,62 @@ test('касание поля на четвёртом уровне сразу б
   assert.equal(g.count(),4);
 });
 
-test('касания кнопки включают прицел и выпускают один обломок вторым тапом или удержанием',()=>{
+test('удержание кнопки и поля крутит обломок, отпускание бросает ровно один раз',()=>{
   for (const nativeTouch of [true,false]) {
-    const g=game(nativeTouch);
-    const props={pointerType:'touch'};
-    const finger={identifier:1,clientX:100,clientY:175};
-    function down() {
-      g.send('control','pointerdown',props);
-      if (nativeTouch) g.send('control','touchstart',{touches:[finger],changedTouches:[finger]});
+    for (const surface of ['control','field']) {
+      for (const duration of [3,90]) {
+        const g=game(nativeTouch);
+        const props={pointerType:nativeTouch?'touch':'mouse'};
+        const finger={identifier:1,clientX:100,clientY:175};
+        g.send(surface,'pointerdown',props);
+        if (nativeTouch) g.send(surface,'touchstart',{touches:[finger],changedTouches:[finger]});
+        const angle=g.scene.angle;
+        g.tick(duration);
+        assert.equal(g.count(),0);
+        assert.equal(g.scene.phase,'hold');
+        assert.ok(g.scene.angle>angle);
+        g.send(surface,'lostpointercapture',props);
+        if (nativeTouch) {
+          g.send('window','pointercancel',props);
+          g.send('window','touchend',{changedTouches:[{identifier:2}]});
+        }
+        assert.equal(g.count(),0);
+        g.send('window','pointerup',props);
+        if (nativeTouch) g.send('window','touchend',{changedTouches:[finger]});
+        g.send(surface,'click',{detail:1,...props});
+        assert.equal(g.count(),1);
+        assert.equal(g.scene.phase,'flight');
+      }
     }
-    function up() {
-      g.send('window','pointerup',props);
-      if (nativeTouch) g.send('window','touchend',{changedTouches:[finger]});
-      g.send('control','click',{detail:1,...props});
-    }
-    down(); g.tick(3); up(); g.tick(90);
-    assert.equal(g.count(),0);
-    assert.equal(g.element('control').textContent,'Throw');
-    down(); g.tick(2);
-    assert.equal(g.count(),0);
-    up(); g.tick(120);
-    assert.equal(g.count(),1);
-    down(); g.tick(60);
-    g.send('control','lostpointercapture',props);
-    if (nativeTouch) {
-      g.send('window','pointercancel',props);
-      g.send('window','touchend',{changedTouches:[{identifier:2}]});
-    }
-    assert.equal(g.count(),1);
-    up();
-    assert.equal(g.count(),2);
   }
 });
 
-test('системное прерывание сохраняет прицел до явного броска',()=>{
+test('перетаскивание перемещает кольцо на каждом уровне без броска до отпускания',()=>{
+  for (let stage=0;stage<5;stage++) {
+    for (const touch of [false,true]) {
+      const g=game(touch);
+      g.scene.stage=stage;
+      const start={identifier:1,clientX:100,clientY:175};
+      const end={...start,clientX:240,clientY:230};
+      if (touch) g.send('field','touchstart',{touches:[start],changedTouches:[start]});
+      else g.send('field','pointerdown',start);
+      const center={...g.scene.center};
+      g.tick(30);
+      if (touch) g.send('field','touchmove',{changedTouches:[end]});
+      else g.send('field','pointermove',end);
+      assert.ok(g.scene.center.x>center.x);
+      assert.ok(g.scene.center.y>center.y);
+      assert.equal(g.count(),0);
+      const preview={...g.scene.preview};
+      if (touch) g.send('window','touchend',{changedTouches:[end]});
+      else g.send('window','pointerup',end);
+      assert.equal(g.count(),1);
+      assert.deepEqual({...g.scene.shot},preview);
+    }
+  }
+});
+
+test('системное прерывание не бросает обломок, следующее удержание работает',()=>{
   for (const signal of ['pointercancel','blur','touchcancel']) {
     const g=game(signal==='touchcancel');
     const finger={identifier:8};
@@ -135,17 +158,14 @@ test('системное прерывание сохраняет прицел д
   }
 });
 
-test('короткий клик по кнопке только прицеливается, повторный клик бросает',()=>{
-  for (const accessible of [false,true]) {
-    const g=game();
-    const click=()=>accessible ? g.send('control','click',{detail:0,pointerId:-1}) : g.tap('control');
-    click();
-    g.tick(120);
-    assert.equal(g.count(),0);
-    assert.equal(g.element('control').textContent,'Throw');
-    click();
-    assert.equal(g.count(),1);
-  }
+test('пробел удерживает обломок до отпускания',()=>{
+  const g=game();
+  g.send('window','keydown',{code:'Space'});
+  g.tick(90);
+  assert.equal(g.count(),0);
+  assert.equal(g.scene.phase,'hold');
+  g.send('window','keyup',{code:'Space'});
+  assert.equal(g.count(),1);
 });
 
 test('четыре цели сменяются сами, финал и перезапуск не бросают обломок',()=>{

@@ -36,12 +36,11 @@
   readBest();
   const replay = el('replay');
   replay.textContent = t('Play again','Сыграть ещё');
-  const controls = t('Touch, mouse or Space','Касание, мышь или пробел');
+  const controls = t('Drag to move the ring · Hold Space to orbit','Перетаскивай кольцо · Удерживай пробел для вращения');
   const requests = [];
-  const tapDuration = 350;
   const nativeTouch = 'ontouchstart' in window || typeof window.TouchEvent === 'function';
-  const aimTip = t('Press once to aim, then again to throw. Or hold and release.',
-    'Нажми один раз для прицеливания, второй — для броска. Можно также удерживать и отпустить.');
+  const aimTip = t('Hold to orbit. Drag to move the ring. Release to throw.',
+    'Держи — обломок крутится. Перетаскивай кольцо по полю. Отпусти — обломок полетит.');
   const impactDuration = .6;
   let rippleTime = -1;
   let input = null, lastState = '', previousTime = 0, impactAge = 0;
@@ -93,7 +92,7 @@
     ctx.fillStyle = glow; ctx.fillRect(c.x-64,c.y-64,128,128);
     ring(c.x,c.y,9,'#88e0da',1); ring(c.x,c.y,3,'#cefcf6',2.5);
     const rippleAge = scene.age-rippleTime;
-    if (scene.freeFlight && !reduce && rippleAge >= 0 && rippleAge < .32) {
+    if (!reduce && rippleAge >= 0 && rippleAge < .32) {
       ring(c.x,c.y,12+rippleAge*65,'rgba(158,243,236,'+(1-rippleAge/.32)+')',1.4);
     }
     if (held) ring(c.x,c.y,15,accent,2,-Math.PI/2,-Math.PI/2 + Math.PI*2*Math.min(1,scene.held/scene.chargeTime));
@@ -167,7 +166,7 @@
     const aiming = {hit:'aim', blocked:'shield', miss:'ready'};
     const state = scene.phase === 'hold' ? aiming[scene.aimOutcome] : scene.phase;
     const waiting = scene.phase === 'flight' ? requests.length : 0;
-    const panelKey = [scene.stage, scene.throws, state, waiting, input?.armed, input?.tapToAim].join('/');
+    const panelKey = [scene.stage, scene.throws, state, waiting].join('/');
     if (panelKey === lastState) return;
     lastState = panelKey;
     const finished = state === 'hit' && scene.finalStage;
@@ -183,34 +182,24 @@
     el('shots').textContent = t('Throws · ','Броски · ') + scene.throws;
     el('best').hidden = !best;
     if (best) el('best').textContent = t('Best · ','Рекорд · ') + best;
-    let tip = aimTip, label = t('Aim','Прицелиться'), hint = controls;
-    if (scene.freeFlight) {
-      hint=t('Drag to move · Arrows and Space','Перетаскивай кольцо · Стрелки и пробел');
-      if (state === 'idle') tip=t('Touch the arena to place the ring. Lift to throw, even on a quick tap.','Коснись поля, чтобы поставить кольцо. Отпусти — даже короткое касание даст бросок.');
-    }
+    let tip = aimTip, label = t('Hold to orbit','Удерживай для вращения'), hint = controls;
     if (state === 'ready') {tip=t('Release to throw along the dotted line.','Отпусти, и обломок полетит по пунктиру.');label=t('Release to throw','Отпусти для броска');}
     if (state === 'shield') {tip=t('Release to throw. The shield is in the way.','Можешь бросать. Сейчас на пути щит.');label=t('Shield ahead','На пути щит');}
     if (state === 'aim') {tip=t('On target. Release now!','Цель на линии. Отпускай!');label=t('Release!','Отпускай!');}
-    if (scene.phase === 'hold' && input === requests[0] && (input.armed || input.tapToAim)) {
-      tip = input.armed ? t('Aiming. Tap to throw along the dotted line.','Прицел включён. Коснись кнопки, чтобы бросить по пунктиру.') : aimTip;
-      label = input.armed ? t('Throw','Бросить') : t('Aiming…','Прицеливание…');
-    }
     if (state === 'flight') {
       tip = waiting ? t('Throws waiting: ','Бросков в очереди: ') + waiting : t('Fragment in flight.','Обломок летит.');
-      if (input?.armed) label = t('Throw','Бросить');
     }
     if (state === 'miss') {tip=t('Missed. Release when the aim line turns gold.','Мимо. Отпусти, когда пунктир станет золотым.');}
     if (state === 'blocked') tip=t('The shield stopped your shot. Wait for a gold trajectory before release.','Обломок попал в щит. Дождись золотой траектории перед броском.');
-    if (state === 'miss' || state === 'blocked') label=t('Aim again','Прицелиться ещё раз');
+    if (state === 'miss' || state === 'blocked') label=t('Hold to orbit','Удерживай для вращения');
     if (state === 'hit') {
       const results = [
         t('Anchor down. Next up: a moving target.','Якорь сбит. Следующая цель движется.'),
         t('Drifter down. The sentinel has a shield.','Дрон сбит. Дальше — страж со щитом.'),
-        t('Sentinel down. Move your ring in the next arena.','Страж сбит. В следующей арене кольцо можно переставлять.'),
+        t('Sentinel down. Intercept the scout next.','Страж сбит. Следующая цель — летающий разведчик.'),
         t('Scout down. Intercept the last flyer.','Разведчик сбит. Остался перехватчик.')
       ];
       tip = results[scene.stage];
-      if (input?.armed) label = t('Throw','Бросить');
       hint = t('First three expeditions free on iPhone','Первые три экспедиции на iPhone бесплатны');
     }
     if (finished) {
@@ -251,7 +240,7 @@
     return {x:(e.clientX-rect.left-rect.width/2)/scale, y:(e.clientY-rect.top-rect.height/2)/scale};
   }
   function moveRing(point) {
-    if (point && scene.freeFlight) {
+    if (point) {
       scene.placeRing(point.x,point.y);
       rippleTime = scene.age;
     }
@@ -296,30 +285,27 @@
       draw();
     }
   }
-  function begin(key, point = null, tapToAim = false) {
-    if (scene.phase === 'hit' && scene.finalStage) return false;
-    if (input?.armed) {
-      Object.assign(input,{key,armed:false,tapToAim:false});
-      if (point) moveAim(point);
-    } else {
-      if (input) return false;
-      input = {key,point,tapToAim,started:performance.now(),released:false,armed:false};
-      requests.push(input);
-    }
+  function begin(key, point = null) {
+    if (input || (scene.phase === 'hit' && scene.finalStage)) return false;
+    input = {key,point,released:false};
+    requests.push(input);
     refreshInput();
     return true;
   }
-  function arm() {
+  function cancelInput() {
     if (!input) return;
-    Object.assign(input,{key:null,armed:true,tapToAim:false});
+    const index = requests.indexOf(input);
+    requests.splice(index,1);
+    if (index === 0 && scene.phase === 'hold') {
+      scene.phase = 'idle';
+      scene.preview = null;
+      scene.grace = 0;
+    }
+    input = null;
     refreshInput();
   }
   function end(key) {
     if (!input || input.key !== key) return;
-    if (input.tapToAim && performance.now()-input.started < tapDuration) {
-      arm();
-      return;
-    }
     input.released = true;
     input = null;
     refreshInput();
@@ -331,12 +317,12 @@
         e.preventDefault();
         if (e.touches.length !== 1) return;
         const touch = e.changedTouches[0];
-        begin(touchKey(touch),surface === field ? fieldPoint(touch) : null,surface === control);
+        begin(touchKey(touch),surface === field ? fieldPoint(touch) : null);
       },{passive:false});
     }
     surface.addEventListener('pointerdown',e=>{
       if (!e.isPrimary || e.button !== 0 || (nativeTouch && e.pointerType === 'touch')) return;
-      if (begin(e.pointerId,surface === field ? fieldPoint(e) : null,surface === control)) {
+      if (begin(e.pointerId,surface === field ? fieldPoint(e) : null)) {
         e.preventDefault();
         surface.setPointerCapture?.(e.pointerId);
       }
@@ -356,20 +342,20 @@
   },true);
   window.addEventListener('touchcancel',e=>{
     for (const touch of e.changedTouches) {
-      if (input?.key === touchKey(touch)) arm();
+      if (input?.key === touchKey(touch)) cancelInput();
     }
   },true);
   window.addEventListener('pointerup',e=>end(e.pointerId),true);
-  window.addEventListener('pointercancel',e=>{if (input?.key === e.pointerId) arm();},true);
+  window.addEventListener('pointercancel',e=>{if (input?.key === e.pointerId) cancelInput();},true);
 
   // Экранный диктор может активировать кнопку без касания или нажатия клавиши.
   control.addEventListener('click',e=>{
-    if (e.detail === 0 && !e.pointerType && begin('activation',null,true)) end('activation');
+    if (e.detail === 0 && !e.pointerType && begin('activation')) end('activation');
   });
   window.addEventListener('keydown',e=>{
     if (e.altKey || e.metaKey || e.ctrlKey) return;
     if (e.target !== control && e.target.closest?.('a,button,input,select,textarea,[contenteditable]')) return;
-    if (scene.freeFlight && ['idle','hold'].includes(scene.phase) && e.code.startsWith('Arrow')) {
+    if (['idle','hold'].includes(scene.phase) && e.code.startsWith('Arrow')) {
       const offsets = {ArrowLeft:[-12,0], ArrowRight:[12,0], ArrowUp:[0,-12], ArrowDown:[0,12]};
       const offset = offsets[e.code];
       if (offset) {
@@ -381,14 +367,14 @@
     }
     if (e.code !== 'Space' && !(e.key === 'Enter' && e.target === control)) return;
     e.preventDefault();
-    if (!e.repeat) begin(e.code,null,e.target === control);
+    if (!e.repeat) begin(e.code);
   });
   window.addEventListener('keyup',e=>{
     if (input?.key === e.code) { e.preventDefault(); end(e.code); }
   });
-  window.addEventListener('blur',arm);
+  window.addEventListener('blur',cancelInput);
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden){arm();cancelAnimationFrame(pending);pending=0;previousTime=0;}else startFrame();
+    if(document.hidden){cancelInput();cancelAnimationFrame(pending);pending=0;previousTime=0;}else startFrame();
   });
   new ResizeObserver(resize).observe(field);
   for (const image of Object.values(images)) image.addEventListener('load',draw);
