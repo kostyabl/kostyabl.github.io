@@ -5,8 +5,9 @@ const {join} = require('node:path');
 const vm = require('node:vm');
 
 // Настоящие обработчики страницы; вместо монитора кадры запускает тест.
-function game() {
+function game(nativeTouch = false) {
   const window = new EventTarget();
+  if (nativeTouch) window.ontouchstart = null;
   const document = new EventTarget();
   const frames = new Map();
   const elements = new Map();
@@ -24,7 +25,7 @@ function game() {
   Object.assign(document, {documentElement:{}, getElementById:element, querySelector:()=>element('canvas')});
   document.addEventListener('gravitide:throw',()=>throws++);
   const context = vm.createContext({
-    document, window, Event, navigator:{language:'en'}, matchMedia:()=>({matches:false}),
+    document, window, Event, navigator:{language:'en'}, matchMedia:q=>({matches:nativeTouch && q === '(pointer: coarse)'}),
     Image:class extends EventTarget {}, ResizeObserver:class { observe() {} },
     devicePixelRatio:1, localStorage:{getItem(){return null;},setItem(){}},
     performance:{now:()=>time},
@@ -85,14 +86,51 @@ test('касание поля на четвёртом уровне сразу б
   assert.equal(g.count(),4);
 });
 
-test('прерывания и последующий pointerup и click выпускают один обломок',()=>{
-  for (const signal of ['pointercancel','lostpointercapture','blur']) {
-    const g=game();
-    g.send('control','pointerdown');
-    g.tick(20);
-    g.send(signal==='lostpointercapture'?'control':'window',signal);
-    g.send('window','pointerup');
+test('касания кнопки включают прицел и выпускают один обломок вторым тапом или удержанием',()=>{
+  for (const nativeTouch of [true,false]) {
+    const g=game(nativeTouch);
+    const props={pointerType:'touch'};
+    const finger={identifier:1,clientX:100,clientY:175};
+    function down() {
+      g.send('control','pointerdown',props);
+      if (nativeTouch) g.send('control','touchstart',{touches:[finger],changedTouches:[finger]});
+    }
+    function up() {
+      g.send('window','pointerup',props);
+      if (nativeTouch) g.send('window','touchend',{changedTouches:[finger]});
+      g.send('control','click',{detail:1,...props});
+    }
+    down(); g.tick(3); up(); g.tick(90);
+    assert.equal(g.count(),0);
+    assert.equal(g.element('control').textContent,'Throw');
+    down(); g.tick(2);
+    assert.equal(g.count(),0);
+    up(); g.tick(120);
+    assert.equal(g.count(),1);
+    down(); g.tick(60);
+    g.send('control','lostpointercapture',props);
+    if (nativeTouch) {
+      g.send('window','pointercancel',props);
+      g.send('window','touchend',{changedTouches:[{identifier:2}]});
+    }
+    assert.equal(g.count(),1);
+    up();
+    assert.equal(g.count(),2);
+  }
+});
+
+test('системное прерывание сохраняет прицел до явного броска',()=>{
+  for (const signal of ['pointercancel','blur','touchcancel']) {
+    const g=game(signal==='touchcancel');
+    const finger={identifier:8};
+    if (signal==='touchcancel') g.send('control','touchstart',{touches:[finger],changedTouches:[finger]});
+    else g.send('control','pointerdown');
+    g.tick(25);
+    g.send('window',signal,{changedTouches:[finger]});
     g.send('control','click',{detail:1});
+    g.tick(40);
+    assert.equal(g.count(),0,signal);
+    g.tap();
     assert.equal(g.count(),1,signal);
   }
 });
