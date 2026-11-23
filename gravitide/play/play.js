@@ -34,14 +34,15 @@
     } catch {}
   }
   readBest();
-  const idleTip = t('Tap to throw. Hold to aim, then release at any time.','Нажми и отпусти, чтобы бросить. Хочешь прицелиться — подержи дольше.');
+  const replay = el('replay');
+  replay.textContent = t('Play again','Сыграть ещё');
   const controls = t('Touch, mouse or Space','Касание, мышь или пробел');
   const requests = [];
   const tapDuration = 350;
   const nativeTouch = 'ontouchstart' in window || typeof window.TouchEvent === 'function';
-  const mobileTip = t('Tap once to aim, then tap again to throw. Or hold and lift to throw.',
-    'Коснись кнопки для прицеливания, затем ещё раз для броска. Можно также удерживать и отпустить.');
-  const touchButton = matchMedia('(pointer: coarse)').matches;
+  const aimTip = t('Press once to aim, then again to throw. Or hold and release.',
+    'Нажми один раз для прицеливания, второй — для броска. Можно также удерживать и отпустить.');
+  const impactDuration = .6;
   let rippleTime = -1;
   let input = null, lastState = '', previousTime = 0, impactAge = 0;
   let width = 0, height = 0, ratio = 1, scale = 1, pending = 0;
@@ -131,7 +132,7 @@
       for (let i=0;i<4;i++) ring(dest.x,dest.y,24,aim?'#ffe6a2':'#f2a37f',1.6,i*Math.PI/2+.15,i*Math.PI/2+1.03);
       ctx.font='600 10px ui-monospace,monospace';ctx.textAlign='center';ctx.fillStyle='#ffbf9e';ctx.fillText(targetName,dest.x,dest.y-31);
     } else {
-      const progress = Math.min(1,impactAge/.6);
+      const progress = Math.min(1,impactAge/impactDuration);
       ring(dest.x,dest.y,20+progress*18,'#b3fbdf',1.3);
       for (let i=0;i<12;i++) {
         const a = i*Math.PI/6, r = 28+progress*(12+i%3*5);
@@ -182,7 +183,7 @@
     el('shots').textContent = t('Throws · ','Броски · ') + scene.throws;
     el('best').hidden = !best;
     if (best) el('best').textContent = t('Best · ','Рекорд · ') + best;
-    let tip = touchButton ? mobileTip : idleTip, label = touchButton ? t('Aim','Прицелиться') : t('Throw','Бросить'), hint = controls;
+    let tip = aimTip, label = t('Aim','Прицелиться'), hint = controls;
     if (scene.freeFlight) {
       hint=t('Drag to move · Arrows and Space','Перетаскивай кольцо · Стрелки и пробел');
       if (state === 'idle') tip=t('Touch the arena to place the ring. Lift to throw, even on a quick tap.','Коснись поля, чтобы поставить кольцо. Отпусти — даже короткое касание даст бросок.');
@@ -191,16 +192,16 @@
     if (state === 'shield') {tip=t('Release to throw. The shield is in the way.','Можешь бросать. Сейчас на пути щит.');label=t('Shield ahead','На пути щит');}
     if (state === 'aim') {tip=t('On target. Release now!','Цель на линии. Отпускай!');label=t('Release!','Отпускай!');}
     if (scene.phase === 'hold' && input === requests[0] && (input.armed || input.tapToAim)) {
-      tip = input.armed ? t('Aiming. Tap to throw along the dotted line.','Прицел включён. Коснись кнопки, чтобы бросить по пунктиру.') : mobileTip;
+      tip = input.armed ? t('Aiming. Tap to throw along the dotted line.','Прицел включён. Коснись кнопки, чтобы бросить по пунктиру.') : aimTip;
       label = input.armed ? t('Throw','Бросить') : t('Aiming…','Прицеливание…');
     }
     if (state === 'flight') {
       tip = waiting ? t('Throws waiting: ','Бросков в очереди: ') + waiting : t('Fragment in flight.','Обломок летит.');
-      label = t('Queue next throw','Бросить следом');
+      if (input?.armed) label = t('Throw','Бросить');
     }
     if (state === 'miss') {tip=t('Missed. Release when the aim line turns gold.','Мимо. Отпусти, когда пунктир станет золотым.');}
     if (state === 'blocked') tip=t('The shield stopped your shot. Wait for a gold trajectory before release.','Обломок попал в щит. Дождись золотой траектории перед броском.');
-    if (state === 'miss' || state === 'blocked') label=touchButton ? t('Aim again','Прицелиться ещё раз') : t('Throw again','Бросить ещё раз');
+    if (state === 'miss' || state === 'blocked') label=t('Aim again','Прицелиться ещё раз');
     if (state === 'hit') {
       const results = [
         t('Anchor down. Next up: a moving target.','Якорь сбит. Следующая цель движется.'),
@@ -209,17 +210,18 @@
         t('Scout down. Intercept the last flyer.','Разведчик сбит. Остался перехватчик.')
       ];
       tip = results[scene.stage];
-      label = t('Throw at next target','Бросить по следующей цели');
+      if (input?.armed) label = t('Throw','Бросить');
       hint = t('First three expeditions free on iPhone','Первые три экспедиции на iPhone бесплатны');
     }
     if (finished) {
       tip = scene.throws === scene.levelCount ? t('Perfect run! Five targets in five throws.','Чистая серия! Пять целей за пять бросков.') :
         t('All targets cleared. Throws: ','Все пять целей сбиты. Бросков: ') + scene.throws + '.';
-      label = t('Throw in a new run','Бросить в новой серии');
     }
     el('status').textContent=tip; control.textContent=label; el('hint').textContent=hint;
     el('panel').classList.toggle('complete', finished);
-    store.hidden = state !== 'hit';
+    control.hidden = finished;
+    replay.hidden = !finished;
+    store.hidden = scene.stage === 0 && state !== 'hit';
     control.dataset.held=String(scene.phase==='hold');
   }
   function frame(time) {
@@ -229,11 +231,17 @@
     const idleMotion = scene.freeFlight || !reduce;
     if (idleMotion || scene.phase !== 'idle') scene.step(dt);
     if (scene.phase==='hit') impactAge+=dt;
-    updatePanel(); // Сохраняем результат серии до перехода к уже заказанному броску.
+    if (scene.phase === 'hit' && !scene.finalStage && impactAge >= impactDuration) advanceScene();
+    if (scene.phase === 'hit' && scene.finalStage) {
+      requests.length = 0;
+      input = null;
+    }
     if (scene.phase !== 'hold' && scene.phase !== 'flight') processThrows();
+    updatePanel();
     draw();
     const flyingTarget = scene.freeFlight && scene.phase !== 'hit';
-    const ambient = !reduce && (scene.phase === 'idle' || (scene.phase === 'hit' && impactAge < .6));
+    const showingHit = scene.phase === 'hit' && (!scene.finalStage || (!reduce && impactAge < impactDuration));
+    const ambient = showingHit || (!reduce && scene.phase === 'idle');
     if (!document.hidden && (flyingTarget || ambient || scene.phase === 'hold' || scene.phase === 'flight')) startFrame();
     else previousTime=0;
   }
@@ -248,16 +256,23 @@
       rippleTime = scene.age;
     }
   }
-  // Одно нажатие создаёт одну попытку, даже если предыдущий обломок ещё в воздухе.
+  function advanceScene() {
+    scene.continueRun();
+    impactAge = 0;
+    rippleTime = -1;
+  }
+  replay.addEventListener('click',()=>{
+    if (scene.phase !== 'hit' || !scene.finalStage) return;
+    advanceScene();
+    refreshInput();
+    control.focus();
+  });
+  // Сохраняем ввод игрока, пока заканчивается полёт и виден эффект попадания.
   function processThrows() {
     const request = requests[0];
-    if (!request || scene.phase === 'flight') return;
+    if (!request || scene.phase === 'flight' || scene.phase === 'hit') return;
     if (scene.phase !== 'hold') {
-      if (scene.phase !== 'idle') {
-        scene.continueRun();
-        impactAge = 0;
-        rippleTime = -1;
-      }
+      if (scene.phase !== 'idle') advanceScene();
       scene.hold();
       moveRing(request.point);
     }
@@ -282,6 +297,7 @@
     }
   }
   function begin(key, point = null, tapToAim = false) {
+    if (scene.phase === 'hit' && scene.finalStage) return false;
     if (input?.armed) {
       Object.assign(input,{key,armed:false,tapToAim:false});
       if (point) moveAim(point);
@@ -309,7 +325,7 @@
     refreshInput();
   }
   const touchKey = touch => 'touch-' + touch.identifier;
-  for (const surface of [field,control,el('status')]) {
+  for (const surface of [field,control]) {
     if (nativeTouch) {
       surface.addEventListener('touchstart',e=>{
         e.preventDefault();
@@ -320,7 +336,7 @@
     }
     surface.addEventListener('pointerdown',e=>{
       if (!e.isPrimary || e.button !== 0 || (nativeTouch && e.pointerType === 'touch')) return;
-      if (begin(e.pointerId,surface === field ? fieldPoint(e) : null,e.pointerType === 'touch' && surface === control)) {
+      if (begin(e.pointerId,surface === field ? fieldPoint(e) : null,surface === control)) {
         e.preventDefault();
         surface.setPointerCapture?.(e.pointerId);
       }
@@ -348,7 +364,7 @@
 
   // Экранный диктор может активировать кнопку без касания или нажатия клавиши.
   control.addEventListener('click',e=>{
-    if (e.detail === 0 && !e.pointerType && begin('activation')) end('activation');
+    if (e.detail === 0 && !e.pointerType && begin('activation',null,true)) end('activation');
   });
   window.addEventListener('keydown',e=>{
     if (e.altKey || e.metaKey || e.ctrlKey) return;
@@ -365,7 +381,7 @@
     }
     if (e.code !== 'Space' && !(e.key === 'Enter' && e.target === control)) return;
     e.preventDefault();
-    if (!e.repeat) begin(e.code);
+    if (!e.repeat) begin(e.code,null,e.target === control);
   });
   window.addEventListener('keyup',e=>{
     if (input?.key === e.code) { e.preventDefault(); end(e.code); }
