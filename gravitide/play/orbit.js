@@ -148,7 +148,6 @@ class ThrowScene {
     return Math.hypot(this.halfWidth+125,this.halfHeight+85)/this.speed + .35;
   }
   get aligned() { return this.aimOutcome === 'hit'; }
-  get ready() { return this.phase === 'hold' && this.held >= this.chargeTime; }
   hold() {
     if (this.phase !== 'idle') return;
     this.phase = 'hold';
@@ -174,7 +173,7 @@ class ThrowScene {
     if (this.phase === 'idle') this.angle = -3.72 + .23*Math.sin(this.age*.85);
     if (this.phase === 'hold') {
       this.held += dt;
-      this.angle += dt * (this.ready && this.aligned ? .56 : 1.6);
+      this.angle += dt * 1.6;
       this.shipAngle += dt*.92;
       this.updateAim(dt);
     }
