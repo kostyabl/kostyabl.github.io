@@ -39,35 +39,34 @@ test('короткое отпускание запускает обломок н
   }
 });
 
-test('прицел через движущуюся мишень даёт упреждение, которое сохраняется при отпускании', () => {
+test('направление выпуска определяется скоростью даже рядом с врагом', () => {
   const scene = new ThrowScene();
-  scene.stage = 1;
   scene.hold();
-  scene.age = 1.867;
-  scene.angle = -1.305;
-  scene.updateAim(0);
-  const p=scene.fragment, v=scene.direction, t=scene.target;
-  assert.ok((t.x-p.x)*v.x+(t.y-p.y)*v.y > 0);
-  assert.ok(Math.abs((t.x-p.x)*v.y-(t.y-p.y)*v.x) < t.radius);
-  assert.equal(scene.planShot(p,v.x*scene.speed,v.y*scene.speed).outcome,'miss');
+  scene.body = {x:0,y:-65,vx:100,vy:0};
+  scene.updateAim();
   assert.equal(scene.aimOutcome,'hit');
-  finishShot(scene,24);
+  // Линия проходит чуть выше края цели. Предыдущая автодоводка превращала такой промах в попадание.
+  scene.body.y = -97;
+  scene.updateAim();
+  assert.equal(scene.aimOutcome,'miss');
+  assert.equal(scene.preview.vx,scene.speed);
+  assert.equal(scene.preview.vy,0);
+  finishShot(scene,60);
 });
 
-test('после выхода из зоны захвата есть время отпустить; дальний промах остаётся промахом', () => {
+test('перенос кольца сохраняет положение и инерцию обломка, затем сила искривляет движение', () => {
   const scene = new ThrowScene();
   scene.hold();
-  for (let i=0;i<240;i++) {
-    scene.step(1/60);
-    if (scene.grace > 0 && scene.grace < scene.reactionTime) break;
-  }
-  assert.ok(scene.grace > .35 && scene.grace < scene.reactionTime);
-  for (let i=0;i<18;i++) { scene.step(1/60); assert.equal(scene.aimOutcome,'hit'); }
-  finishShot(scene,30);
-  scene.reset();
-  scene.hold();
-  assert.equal(scene.aimOutcome,'miss');
-  finishShot(scene,60);
+  scene.step(.5);
+  const body = {...scene.body};
+  scene.placeRing(scene.center.x+30,scene.center.y-20);
+  assert.deepEqual({...scene.body},body);
+  scene.step(.1);
+  assert.ok(Math.hypot(scene.body.vx-body.vx,scene.body.vy-body.vy)>1);
+  assert.ok(Math.hypot(scene.body.x-body.x-body.vx*.1,scene.body.y-body.y-body.vy*.1)>.1);
+  const direction = scene.direction;
+  scene.release();
+  assert.ok(Math.abs(scene.shot.vx*direction.y-scene.shot.vy*direction.x)<1e-8);
 });
 
 test('на всех уровнях исход и точка встречи совпадают с пунктиром при разных частотах кадров', () => {
@@ -91,25 +90,36 @@ test('на всех уровнях исход и точка встречи со�
   assert.deepEqual(seen,new Set(['miss','hit','blocked']));
 });
 
-test('прицел проходит через окно попадания с той же угловой скоростью на всех уровнях', () => {
-  for (let stage=0; stage<5; stage++) {
-    for (const fps of [30,60,120]) {
-      const scene = new ThrowScene();
-      scene.stage = stage;
-      scene.hold();
-      const initialAngle = scene.angle;
+test('враги и пригодность прицела не влияют на физику обломка', () => {
+  const scenes = Array.from({length:5},(_,stage)=>{
+    const scene=new ThrowScene();
+    scene.stage=stage;
+    scene.hold();
+    return scene;
+  });
+  for (let frame=0;frame<600;frame++) {
+    for (const scene of scenes) scene.step(1/60);
+    for (const scene of scenes) assert.deepEqual({...scene.body},{...scenes[0].body});
+  }
+});
+
+test('гравитация устойчива при разной частоте кадров и резком переносе кольца', () => {
+  let reference;
+  for (const fps of [30,60,120]) {
+    const scene=new ThrowScene();
+    scene.hold();
+    for (let frame=0;frame<fps*10;frame++) {
+      if (frame===fps*2) scene.placeRing(90,-40);
+      if (frame===fps*5) scene.placeRing(-90,40);
       scene.step(1/fps);
-      const stepAngle = scene.angle-initialAngle;
-      assert.ok(stepAngle > 0);
-      const outcomes = new Set();
-      for (let frame=0; frame<fps*8; frame++) {
-        outcomes.add(scene.aimOutcome);
-        const before = scene.angle;
-        scene.step(1/fps);
-        assert.ok(Math.abs(scene.angle-before-stepAngle) < 1e-10,
-          `Цель ${stage+1}, ${fps} кадров/с: скорость изменилась при прицеливании`);
-      }
-      assert.ok(outcomes.has('hit') && outcomes.has('miss'));
+      assert.ok(Object.values(scene.body).every(Number.isFinite));
+      assert.ok(Math.abs(scene.body.x)<=scene.halfWidth-scene.fragmentRadius);
+      assert.ok(Math.abs(scene.body.y)<=scene.halfHeight-scene.fragmentRadius);
     }
+    if (reference) {
+      assert.ok(Math.hypot(scene.body.x-reference.x,scene.body.y-reference.y)<.1);
+      assert.ok(Math.hypot(scene.body.vx-reference.vx,scene.body.vy-reference.vy)<.1);
+    }
+    reference={...scene.body};
   }
 });
